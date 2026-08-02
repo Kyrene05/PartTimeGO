@@ -113,8 +113,7 @@ fun LoginScreen(
         Surface(
             modifier= Modifier
                 .fillMaxWidth()
-                .fillMaxHeight()
-                .weight(1f,fill=false),
+                .fillMaxHeight(),
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             color=Color.White
         ){
