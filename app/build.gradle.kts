@@ -66,16 +66,14 @@ dependencies {
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
 
-    // Supabase Kotlin SDK
-    val supabaseVersion = "2.1.0" // Check for latest stable version
-    implementation("io.github.jan-tennert.supabase:postgrest-kt:$supabaseVersion")
-    implementation("io.github.jan-tennert.supabase:realtime-kt:$supabaseVersion")
+    // Supabase Ktor Client & Modules
+    implementation(platform("io.github.jan-tennert.supabase:bom:3.0.1"))
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.github.jan-tennert.supabase:auth-kt")
+    implementation("io.github.jan-tennert.supabase:realtime-kt")
 
-    // Ktor Engine for Android
-    implementation("io.ktor:ktor-client-android:2.3.8")
-
-    // KotlinX Serialization for parsing JSON from Supabase
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    // Ktor Engine (Required by Supabase Kotlin SDK)
+    implementation("io.ktor:ktor-client-android:3.0.1")
 
     //Icons
     implementation("androidx.compose.material:material-icons-core")

@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
@@ -49,76 +50,79 @@ import androidx.compose.ui.unit.sp
 import com.example.parttimego.ui.theme.DarkNavy
 import com.example.parttimego.ui.theme.MutedText
 import com.example.parttimego.ui.theme.SoftGrey
+import com.example.parttimego.viewmodel.AuthState
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () ->Unit={},
+    authState: AuthState= AuthState.Idle,
+    onLoginClick: (String, String) -> Unit = { _, _ -> },
     onRegisterClick: () ->Unit={}
-){
-    var email by remember {mutableStateOf("")}
-    var password by remember {mutableStateOf("")}
-    var isLoginTab by remember { mutableStateOf(true)}
+) {
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var isLoginTab by remember { mutableStateOf(true) }
 
-    val scrollState= rememberScrollState()
+    val scrollState = rememberScrollState()
 
     Column(
-        modifier= Modifier
+        modifier = Modifier
             .fillMaxSize()
             .background(DarkNavy)
             .statusBarsPadding()
             .navigationBarsPadding()
             .verticalScroll(scrollState)
-    ){
+    ) {
         Column(
-            modifier=Modifier
+            modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal=24.dp,vertical=24.dp)
+                .padding(horizontal = 24.dp, vertical = 24.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    modifier= Modifier
+                    modifier = Modifier
                         .size(44.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(SoftGrey),
                     contentAlignment = Alignment.Center
-                ){
+                ) {
                     Text(
-                        text="P",
-                        fontSize=22.sp,
-                        fontWeight= FontWeight.Bold,
-                        color=DarkNavy
+                        text = "P",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = DarkNavy
                     )
                 }
-                Spacer(modifier=Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text="PartTimeGO",
-                    fontSize=22.sp,
+                    text = "PartTimeGO",
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color=Color.White
+                    color = Color.White
                 )
             }
-            Spacer(modifier=Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text="Welcome Back!",
+                text = "Welcome Back!",
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
-                color=Color.White
+                color = Color.White
             )
             Text(
-                text="Log in to find your job",
+                text = "Log in to find your job",
                 fontSize = 14.sp,
-                color=Color.White.copy(alpha=0.8f)
+                color = Color.White.copy(alpha = 0.8f)
             )
         }
+        //White form card
         Surface(
-            modifier= Modifier
+            modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(),
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-            color=Color.White
-        ){
+            color = Color.White
+        ) {
             Column(
-                modifier= Modifier
+                modifier = Modifier
                     .fillMaxWidth()
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -131,58 +135,58 @@ fun LoginScreen(
                         .clip(RoundedCornerShape(12.dp))
                         .background(SoftGrey)
                         .padding(4.dp)
-                ){
+                ) {
                     Box(
-                        modifier= Modifier
+                        modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
                             .clip(RoundedCornerShape(8.dp))
                             .background(if (isLoginTab) Color.White else Color.Transparent)
-                            .clickable{isLoginTab=true},
+                            .clickable { isLoginTab = true },
                         contentAlignment = Alignment.Center
-                    ){
+                    ) {
                         Text(
-                            text="Log In",
+                            text = "Log In",
                             fontWeight = FontWeight.Bold,
-                            color=DarkNavy
+                            color = DarkNavy
                         )
                     }
                     Box(
-                        modifier= Modifier
+                        modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
                             .clip(RoundedCornerShape(8.dp))
-                            .background(if (!isLoginTab)Color.White else Color.Transparent)
-                            .clickable{
-                                isLoginTab=false
+                            .background(if (!isLoginTab) Color.White else Color.Transparent)
+                            .clickable {
+                                isLoginTab = false
                                 onRegisterClick()
                             },
-                        contentAlignment= Alignment.Center
-                    ){
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
-                            text="Register",
+                            text = "Register",
                             fontWeight = FontWeight.Bold,
-                            color= MutedText
+                            color = MutedText
                         )
                     }
                 }
-                Spacer(modifier= Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-                Column(modifier= Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text="Email Address",
+                        text = "Email Address",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color=MutedText
+                        color = MutedText
                     )
-                    Spacer(modifier=Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
-                        value=email,
-                        onValueChange = {email=it},
-                        placeholder = {Text("you@example.com",color=Color.Gray)},
+                        value = email,
+                        onValueChange = { email = it },
+                        placeholder = { Text("you@example.com", color = Color.Gray) },
                         leadingIcon = {
                             Icon(
-                                painter= painterResource(id= R.drawable.ic_email),
+                                painter = painterResource(id = R.drawable.ic_email),
                                 contentDescription = "Email Icon",
                                 tint = MutedText,
                                 modifier = Modifier.size(20.dp)
@@ -190,30 +194,30 @@ fun LoginScreen(
                             )
                         },
                         singleLine = true,
-                        shape=RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedBorderColor = SoftGrey,
                             focusedBorderColor = DarkNavy
                         ),
-                        modifier=Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                 }
-                Spacer(modifier=Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 //password field
-                Column(modifier=Modifier.fillMaxWidth()){
+                Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text="Password",
+                        text = "Password",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color=MutedText
+                        color = MutedText
                     )
-                    Spacer(modifier= Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
-                        value=password,
-                        onValueChange = {password=it},
-                        placeholder = {Text("• • • • • • • •", color= Color.Gray)},
+                        value = password,
+                        onValueChange = { password = it },
+                        placeholder = { Text("• • • • • • • •", color = Color.Gray) },
                         leadingIcon = {
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_lock),
@@ -224,8 +228,8 @@ fun LoginScreen(
                         },
                         visualTransformation = PasswordVisualTransformation(),
                         singleLine = true,
-                        shape=RoundedCornerShape(12.dp),
-                        colors= OutlinedTextFieldDefaults.colors(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
                             unfocusedBorderColor = SoftGrey,
                             focusedBorderColor = DarkNavy
                         ),
@@ -243,75 +247,90 @@ fun LoginScreen(
                         .padding(top = 8.dp)
                         .clickable { /* Handle forgot password */ }
                 )
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                //  Display Error Message if Login Fails
+                if (authState is AuthState.Error) {
+                    Text(
+                        text = authState.message,
+                        color = Color.Red,
+                        fontSize = 12.sp,
+                        modifier = Modifier.align(Alignment.Start)
+                    )
+                }
+
                 // Log In Button
                 Button(
-                    onClick = { onLoginSuccess() },
+                    onClick = { onLoginClick(email, password) },
+                    enabled = authState !is AuthState.Loading,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = DarkNavy)
                 ) {
-                    Text(text = "Log In", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    if (authState is AuthState.Loading) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    } else {
+                        Text(text = "Log In", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Divider
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = SoftGrey)
-                    Text(
-                        text = " or continue as ",
-                        fontSize = 12.sp,
-                        color = MutedText,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = SoftGrey)
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Role Options: Job Seeker & Employer
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = { /* Job Seeker guest mode */ },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, SoftGrey)
+                    // Divider
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "Job Seeker", color = DarkNavy, fontWeight = FontWeight.Bold)
+                        HorizontalDivider(modifier = Modifier.weight(1f), color = SoftGrey)
+                        Text(
+                            text = " or continue as ",
+                            fontSize = 12.sp,
+                            color = MutedText,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+                        HorizontalDivider(modifier = Modifier.weight(1f), color = SoftGrey)
                     }
 
-                    OutlinedButton(
-                        onClick = { /* Employer guest mode */ },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, SoftGrey)
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Role Options: Job Seeker & Employer
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(text = "Employer", color = DarkNavy, fontWeight = FontWeight.Bold)
+                        OutlinedButton(
+                            onClick = { /* Job Seeker guest mode */ },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, SoftGrey)
+                        ) {
+                            Text(
+                                text = "Job Seeker",
+                                color = DarkNavy,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = { /* Employer guest mode */ },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, SoftGrey)
+                        ) {
+                            Text(text = "Employer", color = DarkNavy, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
+
         }
-
     }
-}
 
-
-// Preview to test layout
-@Preview(showBackground = true)
-@Composable
-fun LoginScreenPreview() {
-    LoginScreen()
-}

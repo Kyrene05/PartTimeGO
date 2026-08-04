@@ -1,5 +1,6 @@
 package com.example.parttimego.screen
 
+import android.widget.Toast
 import com.example.parttimego.R
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -23,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
@@ -31,6 +33,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -49,11 +53,13 @@ import androidx.compose.ui.unit.sp
 import com.example.parttimego.ui.theme.DarkNavy
 import com.example.parttimego.ui.theme.MutedText
 import com.example.parttimego.ui.theme.SoftGrey
+import com.example.parttimego.viewmodel.AuthState
 
 
 @Composable
 fun RegisterScreen(
-    onRegisterSuccess: () -> Unit = {},
+    authState: AuthState = AuthState.Idle,
+    onRegisterClick: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     onLoginClick: () -> Unit = {}
 ) {
     var fullName by remember { mutableStateOf("") }
@@ -63,6 +69,14 @@ fun RegisterScreen(
     var isLoginTab by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
+
+    val context = LocalContext.current
+
+    LaunchedEffect(authState) {
+        if (authState is AuthState.Success) {
+            Toast.makeText(context, authState.message, Toast.LENGTH_LONG).show()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -310,73 +324,100 @@ fun RegisterScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Status Error / Success Messages
+                if (authState is AuthState.Error) {
+                    Text(
+                        text = authState.message,
+                        color = Color.Red,
+                        fontSize = 12.sp,
+                        modifier = Modifier.align(Alignment.Start)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                if (authState is AuthState.Success) {
+                    Text(
+                        text = authState.message,
+                        color = Color(0xFF2E7D32),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.align(Alignment.Start)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
 
                 // Register Button
                 Button(
-                    onClick = { onRegisterSuccess() },
+                    onClick = { onRegisterClick(fullName, email, password, confirmPassword) },
+                    enabled = authState !is AuthState.Loading,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = DarkNavy)
                 ) {
-                    Text(text = "Register", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    if (authState is AuthState.Loading) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    } else {
+                        Text(text = "Register", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Divider
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = SoftGrey)
-                    Text(
-                        text = " or continue as ",
-                        fontSize = 12.sp,
-                        color = MutedText,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = SoftGrey)
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Role Options: Job Seeker & Employer
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = { /* Job Seeker guest mode */ },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, SoftGrey)
+                    // Divider
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "Job Seeker", color = DarkNavy, fontWeight = FontWeight.Bold)
+                        HorizontalDivider(modifier = Modifier.weight(1f), color = SoftGrey)
+                        Text(
+                            text = " or continue as ",
+                            fontSize = 12.sp,
+                            color = MutedText,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+                        HorizontalDivider(modifier = Modifier.weight(1f), color = SoftGrey)
                     }
 
-                    OutlinedButton(
-                        onClick = { /* Employer guest mode */ },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, SoftGrey)
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Role Options: Job Seeker & Employer
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(text = "Employer", color = DarkNavy, fontWeight = FontWeight.Bold)
+                        OutlinedButton(
+                            onClick = { /* Job Seeker guest mode */ },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, SoftGrey)
+                        ) {
+                            Text(
+                                text = "Job Seeker",
+                                color = DarkNavy,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = { /* Employer guest mode */ },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, SoftGrey)
+                        ) {
+                            Text(text = "Employer", color = DarkNavy, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun RegisterScreenPreview() {
-    RegisterScreen()
-}
