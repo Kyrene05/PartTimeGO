@@ -1,15 +1,18 @@
 package com.example.parttimego.screen
 
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import com.example.parttimego.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,6 +36,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -54,230 +59,262 @@ import com.example.parttimego.viewmodel.AuthState
 
 @Composable
 fun LoginScreen(
-    authState: AuthState= AuthState.Idle,
+    authState: AuthState = AuthState.Idle,
     onLoginClick: (String, String) -> Unit = { _, _ -> },
-    onRegisterClick: () ->Unit={}
+    onRegisterClick: () -> Unit = {},
+    onForgotPasswordClick: () -> Unit = {}
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isLoginTab by remember { mutableStateOf(true) }
 
     val scrollState = rememberScrollState()
+    val context = LocalContext.current
 
-    Column(
+    LaunchedEffect(authState) {
+        if (authState is AuthState.Success) {
+            Toast.makeText(context, authState.message, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(DarkNavy)
             .statusBarsPadding()
             .navigationBarsPadding()
-            .verticalScroll(scrollState)
     ) {
+        val screenHeight = maxHeight
+
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 24.dp)
+                .fillMaxSize()
+                .verticalScroll(scrollState)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(SoftGrey),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "P",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = DarkNavy
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "PartTimeGO",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Welcome Back!",
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-            Text(
-                text = "Log in to find your job",
-                fontSize = 14.sp,
-                color = Color.White.copy(alpha = 0.8f)
-            )
-        }
-        //White form card
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(),
-            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-            color = Color.White
-        ) {
+            // --- Header Section ---
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(horizontal = 24.dp, vertical = 24.dp)
             ) {
-                //Login/register toggle tab
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(SoftGrey)
-                        .padding(4.dp)
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (isLoginTab) Color.White else Color.Transparent)
-                            .clickable { isLoginTab = true },
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(SoftGrey),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Log In",
+                            text = "P",
+                            fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                             color = DarkNavy
                         )
                     }
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (!isLoginTab) Color.White else Color.Transparent)
-                            .clickable {
-                                isLoginTab = false
-                                onRegisterClick()
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Register",
-                            fontWeight = FontWeight.Bold,
-                            color = MutedText
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Column(modifier = Modifier.fillMaxWidth()) {
+                    Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "Email Address",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MutedText
+                        text = "PartTimeGO",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
                     )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
-                        placeholder = { Text("you@example.com", color = Color.Gray) },
-                        leadingIcon = {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_email),
-                                contentDescription = "Email Icon",
-                                tint = MutedText,
-                                modifier = Modifier.size(20.dp)
-
-                            )
-                        },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = SoftGrey,
-                            focusedBorderColor = DarkNavy
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-
-                //password field
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "Password",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MutedText
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        placeholder = { Text("• • • • • • • •", color = Color.Gray) },
-                        leadingIcon = {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_lock),
-                                contentDescription = "Password Icon",
-                                tint = MutedText,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        },
-                        visualTransformation = PasswordVisualTransformation(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = SoftGrey,
-                            focusedBorderColor = DarkNavy
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                //forget password link
                 Text(
-                    text = "Forget Password ?",
-                    fontSize = 12.sp,
+                    text = "Welcome Back!",
+                    fontSize = 26.sp,
                     fontWeight = FontWeight.Bold,
-                    color = DarkNavy,
-                    modifier = Modifier
-                        .align(Alignment.End)
-                        .padding(top = 8.dp)
-                        .clickable { /* Handle forgot password */ }
+                    color = Color.White
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Log in to find your job",
+                    fontSize = 14.sp,
+                    color = Color.White.copy(alpha = 0.8f)
+                )
+            }
 
-                //  Display Error Message if Login Fails
-                if (authState is AuthState.Error) {
-                    Text(
-                        text = authState.message,
-                        color = Color.Red,
-                        fontSize = 12.sp,
-                        modifier = Modifier.align(Alignment.Start)
-                    )
-                }
-
-                // Log In Button
-                Button(
-                    onClick = { onLoginClick(email, password) },
-                    enabled = authState !is AuthState.Loading,
+            // --- White Form Card ---
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = screenHeight - 160.dp), // Expands all the way to bottom
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                color = Color.White
+            ) {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = DarkNavy)
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    if (authState is AuthState.Loading) {
-                        CircularProgressIndicator(
-                            color = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    } else {
-                        Text(text = "Log In", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    // Login / Register toggle tab
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(SoftGrey)
+                            .padding(4.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isLoginTab) Color.White else Color.Transparent)
+                                .clickable { isLoginTab = true },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Log In",
+                                fontWeight = FontWeight.Bold,
+                                color = DarkNavy
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (!isLoginTab) Color.White else Color.Transparent)
+                                .clickable {
+                                    isLoginTab = false
+                                    onRegisterClick()
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Register",
+                                fontWeight = FontWeight.Bold,
+                                color = MutedText
+                            )
+                        }
                     }
-                }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Email Address Field
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Email Address",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MutedText
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = email,
+                            onValueChange = { email = it },
+                            placeholder = { Text("you@example.com", color = Color.Gray) },
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_email),
+                                    contentDescription = "Email Icon",
+                                    tint = MutedText,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedBorderColor = SoftGrey,
+                                focusedBorderColor = DarkNavy
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Password Field
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Password",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MutedText
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = { password = it },
+                            placeholder = { Text("• • • • • • • •", color = Color.Gray) },
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_lock),
+                                    contentDescription = "Password Icon",
+                                    tint = MutedText,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            },
+                            visualTransformation = PasswordVisualTransformation(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedBorderColor = SoftGrey,
+                                focusedBorderColor = DarkNavy
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    // Forgot Password link
+                    Text(
+                        text = "Forgot Password ?",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = DarkNavy,
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .padding(top = 8.dp)
+                            .clickable { onForgotPasswordClick() }
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Status Messages
+                    if (authState is AuthState.Error) {
+                        Text(
+                            text = authState.message,
+                            color = Color.Red,
+                            fontSize = 12.sp,
+                            modifier = Modifier.align(Alignment.Start)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    if (authState is AuthState.Success) {
+                        Text(
+                            text = authState.message,
+                            color = Color(0xFF2E7D32),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.align(Alignment.Start)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    // Log In Button
+                    Button(
+                        onClick = { onLoginClick(email, password) },
+                        enabled = authState !is AuthState.Loading,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = DarkNavy)
+                    ) {
+                        if (authState is AuthState.Loading) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        } else {
+                            Text(text = "Log In", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(20.dp))
 
                     // Divider
@@ -328,9 +365,10 @@ fun LoginScreen(
                             Text(text = "Employer", color = DarkNavy, fontWeight = FontWeight.Bold)
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
-
         }
     }
-
+}

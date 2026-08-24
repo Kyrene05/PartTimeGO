@@ -106,4 +106,45 @@ class AuthViewModel : ViewModel() {
             }
         }
     }
+
+    fun sendPasswordResetEmail(email: String) {
+        if (email.isBlank()) {
+            authState = AuthState.Error("Please enter your email address first.")
+            return
+        }
+
+        viewModelScope.launch {
+            authState = AuthState.Loading
+            try {
+                SupabaseClient.client.auth.resetPasswordForEmail(
+                    email = email,
+                    redirectUrl = "parttimego://reset-password" // 👇 Pass your scheme here
+                )
+                authState = AuthState.Success("Password reset link sent! Check your email.")
+            } catch (e: Exception) {
+                authState = AuthState.Error(e.localizedMessage ?: "Failed to send reset link.")
+            }
+        }
+    }
+
+    fun updatePassword(newPassword: String) {
+        if (!isValidPassword(newPassword)) {
+            authState = AuthState.Error("Password must be at least 6 characters.")
+            return
+        }
+
+        viewModelScope.launch {
+            authState = AuthState.Loading
+            try {
+                SupabaseClient.client.auth.updateUser {
+                    password = newPassword
+                }
+                SupabaseClient.client.auth.signOut() // ✅ clear the recovery session
+                authState = AuthState.Success("Password updated! Please log in again.")
+            } catch (e: Exception) {
+                authState = AuthState.Error(e.localizedMessage ?: "Failed to update password.")
+            }
+        }
+    }
 }
+
