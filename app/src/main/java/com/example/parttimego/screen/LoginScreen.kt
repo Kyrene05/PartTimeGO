@@ -1,6 +1,5 @@
 package com.example.parttimego.screen
 
-
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import com.example.parttimego.R
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,6 +34,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,7 +49,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.parttimego.ui.theme.DarkNavy
@@ -61,7 +60,6 @@ import com.example.parttimego.viewmodel.AuthState
 fun LoginScreen(
     authState: AuthState = AuthState.Idle,
     onLoginClick: (String, String) -> Unit = { _, _ -> },
-    onRegisterClick: () -> Unit = {},
     onForgotPasswordClick: () -> Unit = {},
     onJobSeekerClick: () -> Unit = {},
     onEmployerClick: () -> Unit = {}
@@ -69,6 +67,7 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isLoginTab by remember { mutableStateOf(true) }
+    var showRoleDialog by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
     val context = LocalContext.current
@@ -140,7 +139,7 @@ fun LoginScreen(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .defaultMinSize(minHeight = screenHeight - 160.dp), // Expands all the way to bottom
+                    .defaultMinSize(minHeight = screenHeight - 160.dp),
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
                 color = Color.White
             ) {
@@ -182,7 +181,7 @@ fun LoginScreen(
                                 .background(if (!isLoginTab) Color.White else Color.Transparent)
                                 .clickable {
                                     isLoginTab = false
-                                    onRegisterClick()
+                                    showRoleDialog = true
                                 },
                             contentAlignment = Alignment.Center
                         ) {
@@ -342,7 +341,7 @@ fun LoginScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         OutlinedButton(
-                            onClick = { onJobSeekerClick()},
+                            onClick = onJobSeekerClick,
                             modifier = Modifier
                                 .weight(1f)
                                 .height(48.dp),
@@ -357,7 +356,7 @@ fun LoginScreen(
                         }
 
                         OutlinedButton(
-                            onClick = { onEmployerClick()},
+                            onClick = onEmployerClick,
                             modifier = Modifier
                                 .weight(1f)
                                 .height(48.dp),
@@ -372,5 +371,28 @@ fun LoginScreen(
                 }
             }
         }
+    }
+
+    if (showRoleDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showRoleDialog = false
+                isLoginTab = true
+            },
+            title = { Text("Choose your role") },
+            text = { Text("Are you registering as a Job Seeker or an Employer?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showRoleDialog = false
+                    onJobSeekerClick()
+                }) { Text("Job Seeker", fontWeight = FontWeight.Bold, color = DarkNavy) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showRoleDialog = false
+                    onEmployerClick()
+                }) { Text("Employer", fontWeight = FontWeight.Bold, color = DarkNavy) }
+            }
+        )
     }
 }
