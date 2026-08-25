@@ -25,6 +25,14 @@ class AuthViewModel : ViewModel() {
     var authState by mutableStateOf<AuthState>(AuthState.Idle)
         private set
 
+    // 保存当前选中的角色（默认为 job_seeker 或 employer）
+    var selectedRole by mutableStateOf("job_seeker")
+        private set
+
+    fun setRole(role: String) {
+        selectedRole = role
+    }
+
     fun resetState() {
         authState = AuthState.Idle
     }
@@ -38,14 +46,14 @@ class AuthViewModel : ViewModel() {
         return password.length >= 6
     }
 
-    private fun roleLabel(role: String?): String = when (role) {
+    fun roleLabel(role: String?): String = when (role?.lowercase()) {
         "employer" -> "Employer"
         "job_seeker" -> "Job Seeker"
         else -> "User"
     }
 
     // 1. Register action
-    fun signUp(fullName: String, emailInput: String, passwordInput: String, confirmPasswordInput: String, role: String) {
+    fun signUp(fullName: String, emailInput: String, passwordInput: String, confirmPasswordInput: String) {
         val trimmedEmail = emailInput.trim()
 
         if (fullName.isBlank() || trimmedEmail.isEmpty() || passwordInput.isEmpty()) {
@@ -76,10 +84,10 @@ class AuthViewModel : ViewModel() {
                     password = passwordInput
                     data = buildJsonObject {
                         put("full_name", fullName)
-                        put("role", role)
+                        put("role", selectedRole) // 使用当前选中的角色
                     }
                 }
-                authState = AuthState.Success("Registered successfully as ${roleLabel(role)}!")
+                authState = AuthState.Success("Registered successfully as ${roleLabel(selectedRole)}!")
             } catch (e: Exception) {
                 authState = AuthState.Error(e.localizedMessage ?: "Registration failed")
             }

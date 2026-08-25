@@ -87,10 +87,12 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                 },
                 onJobSeekerClick = {
                     authViewModel.resetState()
+                    authViewModel.setRole("job_seeker")
                     navController.navigate(Screen.Register.createRoute("job_seeker"))
                 },
                 onEmployerClick = {
                     authViewModel.resetState()
+                    authViewModel.setRole("employer")
                     navController.navigate(Screen.Register.createRoute("employer"))
                 }
             )
@@ -116,7 +118,9 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             val role = backStackEntry.arguments?.getString("role") ?: "job_seeker"
 
             LaunchedEffect(authViewModel.authState) {
-                if (authViewModel.authState is AuthState.Success) {
+                if (navController.currentDestination?.route?.startsWith("register") == true &&
+                    authViewModel.authState is AuthState.Success
+                ) {
                     delay(2000)
                     authViewModel.resetState()
                     navController.navigate(Screen.Login.route) {
@@ -127,8 +131,9 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
 
             RegisterScreen(
                 authState = authViewModel.authState,
+                selectedRole = authViewModel.roleLabel(role),
                 onRegisterClick = { fullName, email, password, confirmPassword ->
-                    authViewModel.signUp(fullName, email, password, confirmPassword, role)
+                    authViewModel.signUp(fullName, email, password, confirmPassword)
                 },
                 onLoginClick = {
                     authViewModel.resetState()
@@ -165,13 +170,5 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                 }
             )
         }
-
-        /*
-        // Dashboard Screen (employer side) — re-enable once ready to merge
-        composable(Screen.Dashboard.route) { ... }
-
-        // Post Job Screen — re-enable once ready to merge
-        composable(Screen.PostJob.route) { ... }
-        */
     }
 }

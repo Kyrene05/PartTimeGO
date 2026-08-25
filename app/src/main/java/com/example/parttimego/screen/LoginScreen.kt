@@ -1,11 +1,9 @@
 package com.example.parttimego.screen
 
 import android.widget.Toast
-import androidx.compose.foundation.BorderStroke
 import com.example.parttimego.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -27,9 +25,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -180,7 +176,8 @@ fun LoginScreen(
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(if (!isLoginTab) Color.White else Color.Transparent)
                                 .clickable {
-                                    isLoginTab = false
+                                    // Register is a mandatory-role action — don't switch the tab
+                                    // visually until a role is actually chosen in the dialog.
                                     showRoleDialog = true
                                 },
                             contentAlignment = Alignment.Center
@@ -316,66 +313,17 @@ fun LoginScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // Divider
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        HorizontalDivider(modifier = Modifier.weight(1f), color = SoftGrey)
-                        Text(
-                            text = " or continue as ",
-                            fontSize = 12.sp,
-                            color = MutedText,
-                            modifier = Modifier.padding(horizontal = 8.dp)
-                        )
-                        HorizontalDivider(modifier = Modifier.weight(1f), color = SoftGrey)
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // Role Options: Job Seeker & Employer
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = onJobSeekerClick,
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(48.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, SoftGrey)
-                        ) {
-                            Text(
-                                text = "Job Seeker",
-                                color = DarkNavy,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        OutlinedButton(
-                            onClick = onEmployerClick,
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(48.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, SoftGrey)
-                        ) {
-                            Text(text = "Employer", color = DarkNavy, fontWeight = FontWeight.Bold)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
         }
     }
 
+    // Mandatory role selection before entering Register flow
     if (showRoleDialog) {
         AlertDialog(
             onDismissRequest = {
+                // Cancel out of registering entirely — stay on Log In tab
                 showRoleDialog = false
                 isLoginTab = true
             },
@@ -384,12 +332,14 @@ fun LoginScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showRoleDialog = false
+                    isLoginTab = false
                     onJobSeekerClick()
                 }) { Text("Job Seeker", fontWeight = FontWeight.Bold, color = DarkNavy) }
             },
             dismissButton = {
                 TextButton(onClick = {
                     showRoleDialog = false
+                    isLoginTab = false
                     onEmployerClick()
                 }) { Text("Employer", fontWeight = FontWeight.Bold, color = DarkNavy) }
             }
