@@ -10,7 +10,8 @@ import com.example.parttimego.data.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import kotlinx.coroutines.launch
-
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 sealed class AuthState {
     object Idle : AuthState()
     object Loading : AuthState()
@@ -37,7 +38,7 @@ class AuthViewModel : ViewModel() {
     }
 
     // 1. Register action
-    fun signUp(fullName: String, emailInput: String, passwordInput: String, confirmPasswordInput: String) {
+    fun signUp(fullName: String, emailInput: String, passwordInput: String, confirmPasswordInput: String, role: String) {
         val trimmedEmail = emailInput.trim()
 
         if (fullName.isBlank() || trimmedEmail.isEmpty() || passwordInput.isEmpty()) {
@@ -66,12 +67,21 @@ class AuthViewModel : ViewModel() {
                 SupabaseClient.client.auth.signUpWith(Email) {
                     email = trimmedEmail
                     password = passwordInput
+                    data = buildJsonObject {
+                        put("full_name", fullName)
+                        put("role", role)
+                    }
                 }
                 authState = AuthState.Success("Registration successful!")
             } catch (e: Exception) {
                 authState = AuthState.Error(e.localizedMessage ?: "Registration failed")
             }
         }
+    }
+
+    fun getCurrentUserRole(): String? {
+        return SupabaseClient.client.auth.currentUserOrNull()
+            ?.userMetadata?.get("role")?.toString()?.trim('"')
     }
 
     // 2.Login action

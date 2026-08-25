@@ -4,7 +4,6 @@ plugins {
 
     //Room
     id("com.google.devtools.ksp")
-
     //Supabse
     id("org.jetbrains.kotlin.plugin.serialization") version "2.0.0"
 }
@@ -19,7 +18,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.parttimego"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -61,7 +60,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     //Room
-    val roomVersion = "2.6.1"
+    val roomVersion = "2.7.0"
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
@@ -77,6 +76,7 @@ dependencies {
 
     //Icons
     implementation("androidx.compose.material:material-icons-core")
+    implementation("androidx.compose.material:material-icons-extended:1.6.8")
 
     //Navigation
     implementation("androidx.navigation:navigation-compose:2.8.5")

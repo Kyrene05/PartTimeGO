@@ -62,7 +62,9 @@ fun LoginScreen(
     authState: AuthState = AuthState.Idle,
     onLoginClick: (String, String) -> Unit = { _, _ -> },
     onRegisterClick: () -> Unit = {},
-    onForgotPasswordClick: () -> Unit = {}
+    onForgotPasswordClick: () -> Unit = {},
+    onJobSeekerClick: () -> Unit = {},
+    onEmployerClick: () -> Unit = {}
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -340,7 +342,7 @@ fun LoginScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         OutlinedButton(
-                            onClick = { /* Job Seeker guest mode */ },
+                            onClick = { onJobSeekerClick()},
                             modifier = Modifier
                                 .weight(1f)
                                 .height(48.dp),
@@ -355,7 +357,7 @@ fun LoginScreen(
                         }
 
                         OutlinedButton(
-                            onClick = { /* Employer guest mode */ },
+                            onClick = { onEmployerClick()},
                             modifier = Modifier
                                 .weight(1f)
                                 .height(48.dp),
