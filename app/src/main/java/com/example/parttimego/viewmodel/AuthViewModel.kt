@@ -10,6 +10,8 @@ import com.example.parttimego.data.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 sealed class AuthState {
     object Idle : AuthState()
@@ -23,6 +25,14 @@ class AuthViewModel : ViewModel() {
     var authState by mutableStateOf<AuthState>(AuthState.Idle)
         private set
 
+    // 保存当前选中的角色（默认为 job_seeker 或 employer）
+    var selectedRole by mutableStateOf("job_seeker")
+        private set
+
+    fun setRole(role: String) {
+        selectedRole = role
+    }
+
     fun resetState() {
         authState = AuthState.Idle
     }
@@ -34,6 +44,12 @@ class AuthViewModel : ViewModel() {
 
     private fun isValidPassword(password: String): Boolean {
         return password.length >= 6
+    }
+
+    fun roleLabel(role: String?): String = when (role?.lowercase()) {
+        "employer" -> "Employer"
+        "job_seeker" -> "Job Seeker"
+        else -> "User"
     }
 
     // 1. Register action
@@ -66,15 +82,19 @@ class AuthViewModel : ViewModel() {
                 SupabaseClient.client.auth.signUpWith(Email) {
                     email = trimmedEmail
                     password = passwordInput
+                    data = buildJsonObject {
+                        put("full_name", fullName)
+                        put("role", selectedRole) // 使用当前选中的角色
+                    }
                 }
-                authState = AuthState.Success("Registration successful!")
+                authState = AuthState.Success("Registered successfully as ${roleLabel(selectedRole)}!")
             } catch (e: Exception) {
                 authState = AuthState.Error(e.localizedMessage ?: "Registration failed")
             }
         }
     }
 
-    // 2.Login action
+    // 2. Login action
     fun login(emailInput: String, passwordInput: String) {
         val trimmedEmail = emailInput.trim()
 
@@ -100,7 +120,8 @@ class AuthViewModel : ViewModel() {
                     email = trimmedEmail
                     password = passwordInput
                 }
-                authState = AuthState.Success("Login successful!")
+                val role = getCurrentUserRole()
+                authState = AuthState.Success("Login successful! Logged in as ${roleLabel(role)}.")
             } catch (e: Exception) {
                 authState = AuthState.Error(e.localizedMessage ?: "Login failed")
             }
@@ -118,9 +139,9 @@ class AuthViewModel : ViewModel() {
             try {
                 SupabaseClient.client.auth.resetPasswordForEmail(
                     email = email,
-                    redirectUrl = "parttimego://reset-password" // 👇 Pass your scheme here
+                    redirectUrl = "parttimego://reset-password"
                 )
-                authState = AuthState.Success("Password reset link sent! Check your email.")
+                authState = AuthState.Success("Password reset link sent! Check your inbox.")
             } catch (e: Exception) {
                 authState = AuthState.Error(e.localizedMessage ?: "Failed to send reset link.")
             }
@@ -139,12 +160,16 @@ class AuthViewModel : ViewModel() {
                 SupabaseClient.client.auth.updateUser {
                     password = newPassword
                 }
-                SupabaseClient.client.auth.signOut() // ✅ clear the recovery session
+                SupabaseClient.client.auth.signOut()
                 authState = AuthState.Success("Password updated! Please log in again.")
             } catch (e: Exception) {
                 authState = AuthState.Error(e.localizedMessage ?: "Failed to update password.")
             }
         }
     }
-}
 
+    fun getCurrentUserRole(): String? {
+        return SupabaseClient.client.auth.currentUserOrNull()
+            ?.userMetadata?.get("role")?.toString()?.trim('"')
+    }
+}

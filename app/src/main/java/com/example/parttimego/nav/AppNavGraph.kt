@@ -10,8 +10,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.example.parttimego.data.SupabaseClient
 import com.example.parttimego.screen.ForgotPasswordScreen
 import com.example.parttimego.screen.LoginScreen
@@ -24,20 +26,22 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionSource
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 // Sealed class for Routes
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
     object Login : Screen("login")
-    object Register : Screen("register")
+    object Register : Screen("register/{role}") {
+        fun createRoute(role: String) = "register/$role"
+    }
     object ForgotPassword : Screen("forgot_password")
-
-    object UpdatePassword: Screen("update_password")
+    object UpdatePassword : Screen("update_password")
+    object Dashboard : Screen("dashboard")
+    object PostJob : Screen("post_job")
 }
 
 @Composable
-fun AppNavGraph(navController: NavHostController,authViewModel: AuthViewModel= viewModel()) {
+fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel = viewModel()) {
 
     var sessionReady by remember { mutableStateOf(false) }
 
@@ -53,6 +57,7 @@ fun AppNavGraph(navController: NavHostController,authViewModel: AuthViewModel= v
             }
         }
     }
+
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route
@@ -60,9 +65,8 @@ fun AppNavGraph(navController: NavHostController,authViewModel: AuthViewModel= v
         // Splash Screen
         composable(
             Screen.Splash.route,
-            exitTransition = {
-                fadeOut(animationSpec=tween(700))
-            }) {
+            exitTransition = { fadeOut(animationSpec = tween(700)) }
+        ) {
             SplashScreen(
                 onNavigateToLogin = {
                     navController.navigate(Screen.Login.route) {
@@ -74,28 +78,22 @@ fun AppNavGraph(navController: NavHostController,authViewModel: AuthViewModel= v
 
         // Login Screen
         composable(Screen.Login.route) {
-            // Check that the current route is actually Login before triggering success actions
-            LaunchedEffect(authViewModel.authState) {
-                if (navController.currentDestination?.route == Screen.Login.route &&
-                    authViewModel.authState is AuthState.Success
-                ) {
-                    // TODO: Navigate to Home Screen when ready
-                    // navController.navigate("home") {
-                    //     popUpTo(Screen.Login.route) { inclusive = true }
-                    // }
-                }
-            }
-
             LoginScreen(
                 authState = authViewModel.authState,
                 onLoginClick = { email, password -> authViewModel.login(email, password) },
-                onRegisterClick = {
-                    authViewModel.resetState()
-                    navController.navigate(Screen.Register.route)
-                },
                 onForgotPasswordClick = {
                     authViewModel.resetState()
                     navController.navigate(Screen.ForgotPassword.route)
+                },
+                onJobSeekerClick = {
+                    authViewModel.resetState()
+                    authViewModel.setRole("job_seeker")
+                    navController.navigate(Screen.Register.createRoute("job_seeker"))
+                },
+                onEmployerClick = {
+                    authViewModel.resetState()
+                    authViewModel.setRole("employer")
+                    navController.navigate(Screen.Register.createRoute("employer"))
                 }
             )
         }
@@ -104,22 +102,27 @@ fun AppNavGraph(navController: NavHostController,authViewModel: AuthViewModel= v
         composable(Screen.ForgotPassword.route) {
             ForgotPasswordScreen(
                 authState = authViewModel.authState,
-                onSendResetLinkClick = { email ->
-                    authViewModel.sendPasswordResetEmail(email)
-                },
+                onSendResetLinkClick = { email -> authViewModel.sendPasswordResetEmail(email) },
                 onBackToLoginClick = {
                     authViewModel.resetState()
                     navController.popBackStack()
                 }
             )
         }
+
         // Register Screen
-        composable(Screen.Register.route) {
-            // Listen for register success state
+        composable(
+            Screen.Register.route,
+            arguments = listOf(navArgument("role") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val role = backStackEntry.arguments?.getString("role") ?: "job_seeker"
+
             LaunchedEffect(authViewModel.authState) {
-                if (authViewModel.authState is AuthState.Success) {
-                    delay(2000) // Wait 2 seconds so the green text & Toast remain visible
-                    authViewModel.resetState() // Clear state before moving to Login
+                if (navController.currentDestination?.route?.startsWith("register") == true &&
+                    authViewModel.authState is AuthState.Success
+                ) {
+                    delay(2000)
+                    authViewModel.resetState()
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Register.route) { inclusive = true }
                     }
@@ -128,11 +131,12 @@ fun AppNavGraph(navController: NavHostController,authViewModel: AuthViewModel= v
 
             RegisterScreen(
                 authState = authViewModel.authState,
+                selectedRole = authViewModel.roleLabel(role),
                 onRegisterClick = { fullName, email, password, confirmPassword ->
                     authViewModel.signUp(fullName, email, password, confirmPassword)
                 },
                 onLoginClick = {
-                    authViewModel.resetState() // Clear old errors when switching screens
+                    authViewModel.resetState()
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
@@ -140,7 +144,6 @@ fun AppNavGraph(navController: NavHostController,authViewModel: AuthViewModel= v
             )
         }
 
-        //Update Password Screen
         // Update Password Screen
         composable(Screen.UpdatePassword.route) {
             LaunchedEffect(authViewModel.authState) {

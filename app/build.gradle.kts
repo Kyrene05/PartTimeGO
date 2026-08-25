@@ -4,7 +4,6 @@ plugins {
 
     //Room
     id("com.google.devtools.ksp")
-
     //Supabse
     id("org.jetbrains.kotlin.plugin.serialization") version "2.0.0"
 }
@@ -19,7 +18,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.parttimego"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"

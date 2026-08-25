@@ -1,19 +1,15 @@
 package com.example.parttimego.screen
 
-
 import android.widget.Toast
-import androidx.compose.foundation.BorderStroke
 import com.example.parttimego.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,16 +21,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,7 +45,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.parttimego.ui.theme.DarkNavy
@@ -61,12 +56,14 @@ import com.example.parttimego.viewmodel.AuthState
 fun LoginScreen(
     authState: AuthState = AuthState.Idle,
     onLoginClick: (String, String) -> Unit = { _, _ -> },
-    onRegisterClick: () -> Unit = {},
-    onForgotPasswordClick: () -> Unit = {}
+    onForgotPasswordClick: () -> Unit = {},
+    onJobSeekerClick: () -> Unit = {},
+    onEmployerClick: () -> Unit = {}
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isLoginTab by remember { mutableStateOf(true) }
+    var showRoleDialog by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
     val context = LocalContext.current
@@ -138,7 +135,7 @@ fun LoginScreen(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .defaultMinSize(minHeight = screenHeight - 160.dp), // Expands all the way to bottom
+                    .defaultMinSize(minHeight = screenHeight - 160.dp),
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
                 color = Color.White
             ) {
@@ -179,8 +176,9 @@ fun LoginScreen(
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(if (!isLoginTab) Color.White else Color.Transparent)
                                 .clickable {
-                                    isLoginTab = false
-                                    onRegisterClick()
+                                    // Register is a mandatory-role action — don't switch the tab
+                                    // visually until a role is actually chosen in the dialog.
+                                    showRoleDialog = true
                                 },
                             contentAlignment = Alignment.Center
                         ) {
@@ -315,60 +313,36 @@ fun LoginScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // Divider
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        HorizontalDivider(modifier = Modifier.weight(1f), color = SoftGrey)
-                        Text(
-                            text = " or continue as ",
-                            fontSize = 12.sp,
-                            color = MutedText,
-                            modifier = Modifier.padding(horizontal = 8.dp)
-                        )
-                        HorizontalDivider(modifier = Modifier.weight(1f), color = SoftGrey)
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // Role Options: Job Seeker & Employer
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = { /* Job Seeker guest mode */ },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(48.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, SoftGrey)
-                        ) {
-                            Text(
-                                text = "Job Seeker",
-                                color = DarkNavy,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        OutlinedButton(
-                            onClick = { /* Employer guest mode */ },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(48.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, SoftGrey)
-                        ) {
-                            Text(text = "Employer", color = DarkNavy, fontWeight = FontWeight.Bold)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
         }
+    }
+
+    // Mandatory role selection before entering Register flow
+    if (showRoleDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                // Cancel out of registering entirely — stay on Log In tab
+                showRoleDialog = false
+                isLoginTab = true
+            },
+            title = { Text("Choose your role") },
+            text = { Text("Are you registering as a Job Seeker or an Employer?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showRoleDialog = false
+                    isLoginTab = false
+                    onJobSeekerClick()
+                }) { Text("Job Seeker", fontWeight = FontWeight.Bold, color = DarkNavy) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showRoleDialog = false
+                    isLoginTab = false
+                    onEmployerClick()
+                }) { Text("Employer", fontWeight = FontWeight.Bold, color = DarkNavy) }
+            }
+        )
     }
 }
