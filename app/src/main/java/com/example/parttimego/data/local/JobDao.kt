@@ -1,0 +1,36 @@
+package com.example.parttimego.data.local
+
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface JobDao {
+
+    @Query("SELECT * FROM jobs WHERE employerId = :employerId ORDER BY createdAt DESC")
+    fun getJobsByEmployer(employerId: String): Flow<List<JobEntity>>
+
+    @Query("SELECT * FROM jobs WHERE id = :jobId")
+    suspend fun getJobById(jobId: String): JobEntity?
+
+    @Query("SELECT * FROM jobs WHERE syncStatus != 'SYNCED'")
+    suspend fun getPendingJobs(): List<JobEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertJob(job: JobEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertJobs(jobs: List<JobEntity>)
+
+    @Update
+    suspend fun updateJob(job: JobEntity)
+
+    @Query("DELETE FROM jobs WHERE id = :jobId")
+    suspend fun deleteJob(jobId: String)
+
+    @Query("UPDATE jobs SET syncStatus = :status WHERE id = :jobId")
+    suspend fun updateSyncStatus(jobId: String, status: String)
+}
