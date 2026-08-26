@@ -23,7 +23,8 @@ data class JobDto(
     val category: String,
     val salary: Double,
     @SerialName("salary_period") val salaryPeriod: String,
-    @SerialName("working_date") val workingDate: String? = null,
+    @SerialName("start_date") val startDate: String? = null,
+    @SerialName("end_date") val endDate: String? = null,
     @SerialName("working_hours_start") val workingHoursStart: String? = null,
     @SerialName("working_hours_end") val workingHoursEnd: String? = null,
     val location: String,
@@ -126,7 +127,7 @@ class JobRepository(context: Context) {
 private fun JobEntity.toDto() = JobDto(
     id = id, employerId = employerId, title = title, companyName = companyName,
     category = category, salary = salary, salaryPeriod = salaryPeriod,
-    workingDate = workingDate, workingHoursStart = workingHoursStart, workingHoursEnd = workingHoursEnd,
+    startDate = startDate, endDate = endDate, workingHoursStart = workingHoursStart, workingHoursEnd = workingHoursEnd,
     location = location, description = description, requirements = requirements,
     peopleNeeded = peopleNeeded, tag = tag, createdAt = createdAt
 )
@@ -134,7 +135,7 @@ private fun JobEntity.toDto() = JobDto(
 private fun JobDto.toEntity(syncStatus: String) = JobEntity(
     id = id, employerId = employerId, title = title, companyName = companyName,
     category = category, salary = salary, salaryPeriod = salaryPeriod,
-    workingDate = workingDate, workingHoursStart = workingHoursStart, workingHoursEnd = workingHoursEnd,
+    startDate = startDate, endDate = endDate, workingHoursStart = workingHoursStart, workingHoursEnd = workingHoursEnd,
     location = location, description = description, requirements = requirements,
     peopleNeeded = peopleNeeded, tag = tag, createdAt = createdAt ?: "", syncStatus = syncStatus
 )

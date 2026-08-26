@@ -4,6 +4,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -14,18 +15,26 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.parttimego.data.JobPost
 import com.example.parttimego.data.SupabaseClient
+import com.example.parttimego.data.local.JobEntity
+import com.example.parttimego.screen.DashboardScreen
 import com.example.parttimego.screen.ForgotPasswordScreen
 import com.example.parttimego.screen.LoginScreen
+import com.example.parttimego.screen.PostJobScreen
 import com.example.parttimego.screen.RegisterScreen
 import com.example.parttimego.screen.SplashScreen
 import com.example.parttimego.screen.UpdatePasswordScreen
 import com.example.parttimego.viewmodel.AuthState
 import com.example.parttimego.viewmodel.AuthViewModel
+import com.example.parttimego.viewmodel.JobViewModel
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionSource
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flowOf
+import java.util.UUID
+import java.time.Instant
 
 // Sealed class for Routes
 sealed class Screen(val route: String) {
@@ -38,6 +47,7 @@ sealed class Screen(val route: String) {
     object UpdatePassword : Screen("update_password")
     object Dashboard : Screen("dashboard")
     object PostJob : Screen("post_job")
+    object JobSeekerHome: Screen("job_seeker_home")//TODO: change to job seeker homepage
 }
 
 @Composable
@@ -78,6 +88,24 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
 
         // Login Screen
         composable(Screen.Login.route) {
+            // identify role and navigate to their homepage
+            LaunchedEffect(authViewModel.authState) {
+                if (navController.currentDestination?.route == Screen.Login.route &&
+                    authViewModel.authState is AuthState.Success
+                ) {
+                    authViewModel.resetState()
+                    val role = authViewModel.getCurrentUserRole()
+                    val destination = if (role == "employer") {
+                        Screen.Dashboard.route
+                    } else {
+                        Screen.JobSeekerHome.route // TODO: change to real job seeker homepage
+                    }
+                    navController.navigate(destination) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                }
+            }
+
             LoginScreen(
                 authState = authViewModel.authState,
                 onLoginClick = { email, password -> authViewModel.login(email, password) },
@@ -170,5 +198,93 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                 }
             )
         }
+
+        // Dashboard Screen (employer side)
+        composable(Screen.Dashboard.route) {
+            val jobViewModel: JobViewModel = viewModel()
+            val employerId = SupabaseClient.client.auth.currentUserOrNull()?.id
+
+            LaunchedEffect(employerId) {
+                if (employerId != null) {
+                    jobViewModel.refreshJobs(employerId)
+                }
+            }
+
+            val jobs by (employerId?.let { jobViewModel.getJobsForEmployer(it) }
+                ?: flowOf(emptyList()))
+                .collectAsState(initial = emptyList())
+
+            DashboardScreen(
+                jobs = jobs.map { it.toDashboardJobPost() },
+                onViewAllClick = { },
+                onJobDetailsClick = { },
+                onDashboardTabClick = { },
+                onPostTabClick = { navController.navigate(Screen.PostJob.route) },
+                onProfileTabClick = { }
+            )
+        }
+
+        // Post Job Screen
+        composable(Screen.PostJob.route) {
+            val jobViewModel: JobViewModel = viewModel()
+            var isSubmitting by remember { mutableStateOf(false) }
+            var postError by remember { mutableStateOf<String?>(null) }
+
+            PostJobScreen(
+                isSubmitting = isSubmitting,
+                errorMessage = postError,
+                onBackClick = { navController.popBackStack() },
+                onDashboardTabClick = {navController.navigate(Screen.Dashboard.route){popUpTo(Screen.Dashboard.route){inclusive=true} } },
+                onProfileTabClick = {/*TODO: profile screen*/},
+                onPostClick = { formData ->
+                    val employerId = SupabaseClient.client.auth.currentUserOrNull()?.id
+                    if (employerId == null) {
+                        postError = "You must be logged in to post a job."
+                        return@PostJobScreen
+                    }
+
+                    val job = JobEntity(
+                        id = UUID.randomUUID().toString(),
+                        employerId = employerId,
+                        title = formData.title,
+                        companyName = formData.companyName.ifBlank { null },
+                        category = formData.category,
+                        salary = formData.salary.toDoubleOrNull() ?: 0.0,
+                        salaryPeriod = "day",
+                        startDate = formData.startDate.ifBlank { null },
+                        endDate = formData.endDate.ifBlank { null },
+                        workingHoursStart = formData.workingHoursStart.ifBlank { null },
+                        workingHoursEnd = formData.workingHoursEnd.ifBlank { null },
+                        location = formData.location,
+                        description = formData.description.ifBlank { null },
+                        requirements = formData.requirements.ifBlank { null },
+                        peopleNeeded = formData.peopleNeeded,
+                        tag = null,
+                        createdAt = Instant.now().toString()
+                    )
+
+                    isSubmitting = true
+                    postError = null
+                    jobViewModel.postJob(job)
+                    isSubmitting = false
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.PostJob.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // TODO: Job Seeker home
+        composable(Screen.JobSeekerHome.route) {
+            androidx.compose.material3.Text("Job Seeker home — coming soon")
+        }
     }
 }
+private fun JobEntity.toDashboardJobPost() = JobPost(
+    id = id,
+    title = title,
+    companyOrLocation = companyName ?: location,
+    salary = "RM ${salary.toInt()} / $salaryPeriod",
+    tag = tag ?: "",
+    durationLabel = startDate ?: ""
+)

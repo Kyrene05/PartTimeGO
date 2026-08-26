@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Color.Companion.Black
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -162,7 +163,7 @@ private fun StatCardLarge(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, SoftGrey),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Black),
         color = Color.White
     ) {
         Row(
@@ -172,7 +173,7 @@ private fun StatCardLarge(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Icon(icon, contentDescription = label, tint = Color.Black, modifier = Modifier.size(28.dp))
+            Icon(icon, contentDescription = label, tint = Color.Black, modifier = Modifier.size(50.dp))
             Column(horizontalAlignment = Alignment.End) {
                 Text(value, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                 Text(label, fontSize = 13.sp, color = MutedText)
@@ -186,7 +187,7 @@ private fun StatCardSmall(value: String, label: String, modifier: Modifier = Mod
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, SoftGrey),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Black),
         color = Color.White
     ) {
         Column(
@@ -205,7 +206,7 @@ private fun JobPostCard(job: JobPost, onViewDetailsClick: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, SoftGrey),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Black),
         color = Color.White
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
