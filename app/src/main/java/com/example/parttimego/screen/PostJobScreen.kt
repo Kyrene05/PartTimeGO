@@ -20,7 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -90,6 +90,7 @@ fun PostJobScreen(
     var showEndDatePicker by remember { mutableStateOf(false) }
     var showStartTimePicker by remember { mutableStateOf(false) }
     var showEndTimePicker by remember { mutableStateOf(false) }
+    var showPostConfirm by remember { mutableStateOf(false) }
 
     val categories = listOf("Event Crew", "Promoter", "Retail", "F&B")
 
@@ -398,22 +399,7 @@ fun PostJobScreen(
                                 return@Button
                             }
 
-                            onPostClick(
-                                PostJobFormData(
-                                    title = title,
-                                    companyName = companyName,
-                                    category = category,
-                                    salary = salary,
-                                    startDate = startDate,
-                                    endDate = endDate,
-                                    workingHoursStart = startTime,
-                                    workingHoursEnd = endTime,
-                                    location = location,
-                                    description = description,
-                                    requirements = requirements,
-                                    peopleNeeded = peopleNeeded
-                                )
-                            )
+                            showPostConfirm = true
                         },
                         enabled = !isSubmitting,
                         modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -429,6 +415,42 @@ fun PostJobScreen(
                 }
             }
         }
+    }
+
+    // Post confirmation
+    if (showPostConfirm) {
+        AlertDialog(
+            onDismissRequest = { showPostConfirm = false },
+            containerColor = Color.White,
+            titleContentColor = Color.Black,
+            textContentColor = MutedText,
+            title = { Text("Post this job?", fontWeight = FontWeight.Bold,color=DarkNavy) },
+            text = { Text("This job will be visible to job seekers immediately.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPostConfirm = false
+                    onPostClick(
+                        PostJobFormData(
+                            title = title,
+                            companyName = companyName,
+                            category = category,
+                            salary = salary,
+                            startDate = startDate,
+                            endDate = endDate,
+                            workingHoursStart = startTime,
+                            workingHoursEnd = endTime,
+                            location = location,
+                            description = description,
+                            requirements = requirements,
+                            peopleNeeded = peopleNeeded
+                        )
+                    )
+                }) { Text("Post", color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPostConfirm = false }) { Text("Cancel", color = MutedText) }
+            }
+        )
     }
 
     // Start Date Picker
@@ -578,13 +600,13 @@ fun PostJobScreen(
 }
 
 // Helper: records a composable's y-position within the scrollable parent
-private fun Modifier.trackPosition(key: String, positions: MutableMap<String, Float>): Modifier =
+internal fun Modifier.trackPosition(key: String, positions: MutableMap<String, Float>): Modifier =
     this.onGloballyPositioned { coordinates ->
-        positions[key] = coordinates.positionInParent().y
+        positions[key] = coordinates.boundsInParent().top
     }
 
 @Composable
-private fun SectionLabel(number: String, label: String) {
+internal fun SectionLabel(number: String, label: String) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 10.dp)) {
         Box(
             modifier = Modifier
@@ -602,7 +624,7 @@ private fun SectionLabel(number: String, label: String) {
 }
 
 @Composable
-private fun FormField(
+internal fun FormField(
     label: String,
     value: String,
     isError: Boolean = false,
@@ -631,7 +653,7 @@ private fun FormField(
 }
 
 @Composable
-private fun PickerField(
+internal fun PickerField(
     value: String,
     placeholder: String,
     isError: Boolean = false,
@@ -667,7 +689,7 @@ private fun PickerField(
 }
 
 @Composable
-private fun CategoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
+internal fun CategoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = if (selected) DarkNavy else Color.White,

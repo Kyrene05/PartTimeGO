@@ -27,9 +27,10 @@ class JobViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun updateJob(job: JobEntity) {
+    fun updateJob(job: JobEntity, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             repository.updateJob(job)
+            onComplete()
         }
     }
 

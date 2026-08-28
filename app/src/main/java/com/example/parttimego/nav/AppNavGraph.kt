@@ -19,8 +19,10 @@ import com.example.parttimego.data.JobPost
 import com.example.parttimego.data.SupabaseClient
 import com.example.parttimego.data.local.JobEntity
 import com.example.parttimego.screen.DashboardScreen
+import com.example.parttimego.screen.DetailsScreen
 import com.example.parttimego.screen.ForgotPasswordScreen
 import com.example.parttimego.screen.LoginScreen
+import com.example.parttimego.screen.PostJobFormData
 import com.example.parttimego.screen.PostJobScreen
 import com.example.parttimego.screen.RegisterScreen
 import com.example.parttimego.screen.SplashScreen
@@ -48,6 +50,10 @@ sealed class Screen(val route: String) {
     object Dashboard : Screen("dashboard")
     object PostJob : Screen("post_job")
     object JobSeekerHome: Screen("job_seeker_home")//TODO: change to job seeker homepage
+
+    object Details : Screen("details/{jobId}") {
+        fun createRoute(jobId: String) = "details/$jobId"
+    }
 }
 
 @Composable
@@ -88,7 +94,6 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
 
         // Login Screen
         composable(Screen.Login.route) {
-            // identify role and navigate to their homepage
             LaunchedEffect(authViewModel.authState) {
                 if (navController.currentDestination?.route == Screen.Login.route &&
                     authViewModel.authState is AuthState.Success
@@ -217,12 +222,12 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             DashboardScreen(
                 jobs = jobs.map { it.toDashboardJobPost() },
                 onViewAllClick = { },
-                onJobDetailsClick = { },
+                onJobDetailsClick = { jobId -> navController.navigate(Screen.Details.createRoute(jobId)) },
                 onDashboardTabClick = { },
                 onPostTabClick = { navController.navigate(Screen.PostJob.route) },
                 onProfileTabClick = { }
             )
-        }
+        } // <-- THIS was the missing closing brace
 
         // Post Job Screen
         composable(Screen.PostJob.route) {
@@ -234,8 +239,8 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                 isSubmitting = isSubmitting,
                 errorMessage = postError,
                 onBackClick = { navController.popBackStack() },
-                onDashboardTabClick = {navController.navigate(Screen.Dashboard.route){popUpTo(Screen.Dashboard.route){inclusive=true} } },
-                onProfileTabClick = {/*TODO: profile screen*/},
+                onDashboardTabClick = { navController.navigate(Screen.Dashboard.route) { popUpTo(Screen.Dashboard.route) { inclusive = true } } },
+                onProfileTabClick = { /*TODO: profile screen*/ },
                 onPostClick = { formData ->
                     val employerId = SupabaseClient.client.auth.currentUserOrNull()?.id
                     if (employerId == null) {
@@ -274,12 +279,71 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             )
         }
 
+        // Details Screen (view/edit/delete a posted job)
+        composable(
+            Screen.Details.route,
+            arguments = listOf(navArgument("jobId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val jobId = backStackEntry.arguments?.getString("jobId") ?: ""
+            val jobViewModel: JobViewModel = viewModel()
+            val employerId = SupabaseClient.client.auth.currentUserOrNull()?.id
+
+            val jobs by (employerId?.let { jobViewModel.getJobsForEmployer(it) }
+                ?: flowOf(emptyList()))
+                .collectAsState(initial = emptyList())
+
+            val job = jobs.find { it.id == jobId }
+
+            var isSubmitting by remember { mutableStateOf(false) }
+            var updateError by remember { mutableStateOf<String?>(null) }
+
+            if (job == null) {
+                androidx.compose.material3.Text("Job not found")
+            } else {
+                DetailsScreen(
+                    initialData = job.toPostJobFormData(),
+                    isSubmitting = isSubmitting,
+                    errorMessage = updateError,
+                    onBackClick = { navController.popBackStack() },
+                    onUpdateClick = { formData ->
+                        val updatedJob = job.copy(
+                            title = formData.title,
+                            companyName = formData.companyName.ifBlank { null },
+                            category = formData.category,
+                            salary = formData.salary.toDoubleOrNull() ?: 0.0,
+                            startDate = formData.startDate.ifBlank { null },
+                            endDate = formData.endDate.ifBlank { null },
+                            workingHoursStart = formData.workingHoursStart.ifBlank { null },
+                            workingHoursEnd = formData.workingHoursEnd.ifBlank { null },
+                            location = formData.location,
+                            description = formData.description.ifBlank { null },
+                            requirements = formData.requirements.ifBlank { null },
+                            peopleNeeded = formData.peopleNeeded
+                        )
+                        isSubmitting = true
+                        updateError = null
+                        jobViewModel.updateJob(updatedJob) {
+                            isSubmitting = false
+                            navController.popBackStack()
+                        }
+                    },
+                    onDashboardTabClick = {
+                        navController.navigate(Screen.Dashboard.route) {
+                            popUpTo(Screen.Dashboard.route) { inclusive = true }
+                        }
+                    },
+                    onProfileTabClick = { /* TODO: profile screen */ }
+                )
+            }
+        }
+
         // TODO: Job Seeker home
         composable(Screen.JobSeekerHome.route) {
             androidx.compose.material3.Text("Job Seeker home — coming soon")
         }
     }
 }
+
 private fun JobEntity.toDashboardJobPost() = JobPost(
     id = id,
     title = title,
@@ -287,4 +351,19 @@ private fun JobEntity.toDashboardJobPost() = JobPost(
     salary = "RM ${salary.toInt()} / $salaryPeriod",
     tag = tag ?: "",
     durationLabel = startDate ?: ""
+)
+
+private fun JobEntity.toPostJobFormData() = PostJobFormData(
+    title = title,
+    companyName = companyName ?: "",
+    category = category,
+    salary = salary.toInt().toString(),
+    startDate = startDate ?: "",
+    endDate = endDate ?: "",
+    workingHoursStart = workingHoursStart ?: "",
+    workingHoursEnd = workingHoursEnd ?: "",
+    location = location,
+    description = description ?: "",
+    requirements = requirements ?: "",
+    peopleNeeded = peopleNeeded
 )
