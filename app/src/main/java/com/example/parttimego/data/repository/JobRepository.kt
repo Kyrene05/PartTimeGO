@@ -11,7 +11,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.util.UUID
-
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 // DTO for Supabase — separate from JobEntity since Room and Postgrest
 // have different serialization needs (e.g. snake_case columns)
 @Serializable
@@ -135,7 +137,40 @@ private fun JobEntity.toDto() = JobDto(
 private fun JobDto.toEntity(syncStatus: String) = JobEntity(
     id = id, employerId = employerId, title = title, companyName = companyName,
     category = category, salary = salary, salaryPeriod = salaryPeriod,
-    startDate = startDate, endDate = endDate, workingHoursStart = workingHoursStart, workingHoursEnd = workingHoursEnd,
+    startDate = normalizeDateForDisplay(startDate),
+    endDate = normalizeDateForDisplay(endDate),
+    workingHoursStart = normalizeTimeForDisplay(workingHoursStart),
+    workingHoursEnd = normalizeTimeForDisplay(workingHoursEnd),
     location = location, description = description, requirements = requirements,
     peopleNeeded = peopleNeeded, tag = tag, createdAt = createdAt ?: "", syncStatus = syncStatus
 )
+private fun normalizeDateForDisplay(raw: String?): String? {
+    if (raw.isNullOrBlank()) return raw
+    return try {
+        // Already in display format? Try parsing it as-is first.
+        LocalDate.parse(raw, DateTimeFormatter.ofPattern("MMM dd, yyyy"))
+        raw
+    } catch (e: Exception) {
+        try {
+            // Otherwise assume it's Postgres ISO format (yyyy-MM-dd)
+            LocalDate.parse(raw).format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))
+        } catch (e2: Exception) {
+            raw // give up, show whatever we got rather than crash
+        }
+    }
+}
+
+private fun normalizeTimeForDisplay(raw: String?): String? {
+    if (raw.isNullOrBlank()) return raw
+    return try {
+        LocalTime.parse(raw, DateTimeFormatter.ofPattern("h:mm a"))
+        raw
+    } catch (e: Exception) {
+        try {
+            // Postgres time format, e.g. "15:00:00"
+            LocalTime.parse(raw).format(DateTimeFormatter.ofPattern("h:mm a"))
+        } catch (e2: Exception) {
+            raw
+        }
+    }
+}
