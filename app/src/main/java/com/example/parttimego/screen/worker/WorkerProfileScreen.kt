@@ -3,6 +3,7 @@ package com.example.parttimego.screen.worker
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -40,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.parttimego.data.location.LocationData
 import com.example.parttimego.data.model.Worker
 import com.example.parttimego.ui.theme.DarkText
 import com.example.parttimego.ui.theme.PartTimeGOTheme
@@ -130,18 +134,9 @@ fun WorkerProfileScreen(
                     }
 
                     item {
-                        val locations = listOf(
-                            worker.workerPreferredState,
-                            worker.workerPreferredLocation
-                        )
-                            .map { it.trim() }
-                            .filter { it.isNotEmpty() }
-                            .distinct()
-
-                        FlowChipRow(
-                            chips = locations,
-                            chipType = ChipType.GRAY,
-                            showAddButton = false
+                        PreferredLocationSection(
+                            preferredState = worker.workerPreferredState,
+                            preferredLocations = worker.workerPreferredLocation
                         )
                     }
 
@@ -439,6 +434,212 @@ private fun ProfileChip(
             fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(8.dp, 5.dp)
         )
+    }
+}
+
+@Composable
+private fun PreferredLocationSection(
+    preferredState: String,
+    preferredLocations: String
+) {
+
+    var expanded by remember {
+        mutableStateOf(false)
+    }
+
+    val selectedAreas = preferredLocations
+        .split(",")
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+
+    val availableAreas = LocationData.getAreas(preferredState)
+
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+
+        // Selected State
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    expanded = !expanded
+                },
+            shape = RoundedCornerShape(9.dp),
+            color = Color.White,
+            border = BorderStroke(
+                width = 1.dp,
+                color = Color(0xFFD0D0CC)
+            )
+        ) {
+
+            Row(
+                modifier = Modifier.padding(
+                    horizontal = 12.dp,
+                    vertical = 10.dp
+                ),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+
+                    Text(
+                        text = "State",
+                        fontSize = 7.sp,
+                        color = Color.Gray
+                    )
+
+                    Spacer(
+                        modifier = Modifier.height(2.dp)
+                    )
+
+                    Text(
+                        text = if (preferredState.isBlank()) {
+                            "No preferred state selected"
+                        } else {
+                            preferredState
+                        },
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                }
+
+                Icon(
+                    imageVector = if (expanded) {
+                        Icons.Default.KeyboardArrowUp
+                    } else {
+                        Icons.Default.KeyboardArrowDown
+                    },
+                    contentDescription = "Show Areas",
+                    tint = Color.Black,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+        Spacer(
+            modifier = Modifier.height(8.dp)
+        )
+
+        // Display selected locations as chips
+        if (selectedAreas.isNotEmpty()) {
+
+            Text(
+                text = "Selected Areas",
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+
+            Spacer(
+                modifier = Modifier.height(6.dp)
+            )
+
+            FlowChipRow(
+                chips = selectedAreas,
+                chipType = ChipType.GRAY,
+                showAddButton = false
+            )
+        }
+
+        // Automatically generated areas
+        if (expanded) {
+
+            Spacer(
+                modifier = Modifier.height(10.dp)
+            )
+
+            Text(
+                text = "Available Areas in $preferredState",
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+
+            Spacer(
+                modifier = Modifier.height(6.dp)
+            )
+
+            if (availableAreas.isEmpty()) {
+
+                Text(
+                    text = "No area data available.",
+                    fontSize = 8.sp,
+                    color = Color.Gray
+                )
+
+            } else {
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+
+                    availableAreas.forEach { area ->
+
+                        val isSelected = area in selectedAreas
+
+                        AreaOption(
+                            area = area,
+                            selected = isSelected
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AreaOption(
+    area: String,
+    selected: Boolean
+) {
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        color = if (selected) {
+            Color(0xFF262075).copy(alpha = 0.12f)
+        } else {
+            Color.White
+        },
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (selected) {
+                Color(0xFF262075)
+            } else {
+                Color(0xFFD0D0CC)
+            }
+        )
+    ) {
+
+        Row(
+            modifier = Modifier.padding(
+                horizontal = 12.dp,
+                vertical = 8.dp
+            ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            Text(
+                text = area,
+                modifier = Modifier.weight(1f),
+                fontSize = 9.sp,
+                color = Color.Black
+            )
+
+            if (selected) {
+                Text(
+                    text = "Selected",
+                    fontSize = 7.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF262075)
+                )
+            }
+        }
     }
 }
 
