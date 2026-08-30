@@ -1,5 +1,6 @@
 package com.example.parttimego.screen
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -45,6 +47,7 @@ fun DetailsScreen(
     onDashboardTabClick: () -> Unit = {},
     onProfileTabClick: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     var isEditing by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showUpdateConfirm by remember { mutableStateOf(false) }
@@ -79,7 +82,7 @@ fun DetailsScreen(
     var showStartTimePicker by remember { mutableStateOf(false) }
     var showEndTimePicker by remember { mutableStateOf(false) }
 
-    val categories = listOf("Event Crew", "Promoter", "Retail", "F&B")
+    val categories = listOf("Event Crew", "Promoter", "Retail", "F&B","Other")
 
     Scaffold(
         bottomBar = {
@@ -328,6 +331,7 @@ fun DetailsScreen(
                 TextButton(onClick = {
                     showDeleteConfirm = false
                     onDeleteClick()
+                    Toast.makeText(context, "Job deleted successfully", Toast.LENGTH_SHORT).show()
                 }) { Text("Delete", color = Color(0xFFD32F2F), fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
@@ -357,6 +361,7 @@ fun DetailsScreen(
                             requirements = requirements, peopleNeeded = peopleNeeded
                         )
                     )
+                    Toast.makeText(context, "Job updated successfully", Toast.LENGTH_SHORT).show()
                     isEditing = false
                 }) { Text("Update", color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold) }
             },

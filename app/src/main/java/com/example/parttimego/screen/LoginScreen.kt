@@ -4,6 +4,7 @@ import android.widget.Toast
 import com.example.parttimego.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -323,25 +325,41 @@ fun LoginScreen(
     if (showRoleDialog) {
         AlertDialog(
             onDismissRequest = {
-                // Cancel out of registering entirely — stay on Log In tab
                 showRoleDialog = false
                 isLoginTab = true
             },
-            title = { Text("Choose your role") },
-            text = { Text("Are you registering as a Job Seeker or an Employer?") },
+            containerColor = Color.White,
+            titleContentColor = Color.Black,
+            textContentColor = MutedText,
+            title = { Text("Choose your role", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text("Are you registering as a Job Seeker or an Employer?")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedButton(
+                        onClick = {
+                            showRoleDialog = false
+                            isLoginTab = false
+                            onJobSeekerClick()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Job Seeker", color = DarkNavy, fontWeight = FontWeight.Bold) }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = {
+                            showRoleDialog = false
+                            isLoginTab = false
+                            onEmployerClick()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Employer", color = DarkNavy, fontWeight = FontWeight.Bold) }
+                }
+            },
             confirmButton = {
                 TextButton(onClick = {
                     showRoleDialog = false
-                    isLoginTab = false
-                    onJobSeekerClick()
-                }) { Text("Job Seeker", fontWeight = FontWeight.Bold, color = DarkNavy) }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showRoleDialog = false
-                    isLoginTab = false
-                    onEmployerClick()
-                }) { Text("Employer", fontWeight = FontWeight.Bold, color = DarkNavy) }
+                    isLoginTab = true
+                }) { Text("Cancel", color = DarkNavy) }
             }
         )
     }

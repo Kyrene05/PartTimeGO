@@ -92,7 +92,7 @@ fun PostJobScreen(
     var showEndTimePicker by remember { mutableStateOf(false) }
     var showPostConfirm by remember { mutableStateOf(false) }
 
-    val categories = listOf("Event Crew", "Promoter", "Retail", "F&B")
+    val categories = listOf("Event Crew", "Promoter", "Retail", "F&B","Other")
 
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
