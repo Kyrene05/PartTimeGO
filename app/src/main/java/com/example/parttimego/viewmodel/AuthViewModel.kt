@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.parttimego.data.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -25,7 +26,6 @@ class AuthViewModel : ViewModel() {
     var authState by mutableStateOf<AuthState>(AuthState.Idle)
         private set
 
-    // 保存当前选中的角色（默认为 job_seeker 或 employer）
     var selectedRole by mutableStateOf("job_seeker")
         private set
 
@@ -84,9 +84,19 @@ class AuthViewModel : ViewModel() {
                     password = passwordInput
                     data = buildJsonObject {
                         put("full_name", fullName)
-                        put("role", selectedRole) // 使用当前选中的角色
+                        put("role", selectedRole)
                     }
                 }
+
+                // Also write to the public "profiles" table so other users
+                // (e.g. an employer viewing applicants) can look up this name.
+                val userId = SupabaseClient.client.auth.currentUserOrNull()?.id
+                if (userId != null) {
+                    SupabaseClient.client.postgrest["profiles"].insert(
+                        mapOf("id" to userId, "full_name" to fullName, "role" to selectedRole)
+                    )
+                }
+
                 authState = AuthState.Success("Registered successfully as ${roleLabel(selectedRole)}!")
             } catch (e: Exception) {
                 authState = AuthState.Error(e.localizedMessage ?: "Registration failed")
