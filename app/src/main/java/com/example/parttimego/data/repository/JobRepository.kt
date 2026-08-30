@@ -91,16 +91,13 @@ class JobRepository(context: Context) {
         }
     }
 
-    suspend fun deleteJob(jobId: String) {
-        try {
+    suspend fun deleteJob(jobId: String): Result<Unit> {
+        return try {
             postgrest["jobs"].delete { filter { eq("id", jobId) } }
-            jobDao.deleteJob(jobId) // only remove locally once remote succeeds
+            jobDao.deleteJob(jobId)
+            Result.success(Unit)
         } catch (e: Exception) {
-            // Fail-safe: if delete fails offline, we do NOT delete locally either —
-            // otherwise the job would vanish from UI but still exist remotely,
-            // which is worse than a stale-but-consistent state.
-            // (Optional improvement: mark PENDING_DELETE and hide it in UI via a filter,
-            // rather than fully deleting — ask me if you want that version instead.)
+            Result.failure(e)
         }
     }
 

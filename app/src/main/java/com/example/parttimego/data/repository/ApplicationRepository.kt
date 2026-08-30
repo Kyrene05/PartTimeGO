@@ -46,7 +46,7 @@ class ApplicationRepository {
         return getApplicationsForEmployer(employerId).count { (app, _, _) ->
             if (app.status != "accepted") return@count false
             val appliedAtMillis = try {
-                java.time.Instant.parse(app.appliedAt).toEpochMilli()
+                java.time.OffsetDateTime.parse(app.appliedAt).toInstant().toEpochMilli()
             } catch (e: Exception) {
                 return@count false
             }

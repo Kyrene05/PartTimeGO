@@ -43,7 +43,10 @@ class AuthViewModel : ViewModel() {
     }
 
     private fun isValidPassword(password: String): Boolean {
-        return password.length >= 6
+        val hasMinLength = password.length >= 6
+        val hasLetter = password.any { it.isLetter() }
+        val hasDigit = password.any { it.isDigit() }
+        return hasMinLength && hasLetter && hasDigit
     }
 
     fun roleLabel(role: String?): String = when (role?.lowercase()) {
@@ -67,7 +70,7 @@ class AuthViewModel : ViewModel() {
         }
 
         if (!isValidPassword(passwordInput)) {
-            authState = AuthState.Error("Password must be at least 6 characters.")
+            authState = AuthState.Error("Password must be at least 6 characters and contain both letters and numbers.")
             return
         }
 
@@ -119,7 +122,7 @@ class AuthViewModel : ViewModel() {
         }
 
         if (!isValidPassword(passwordInput)) {
-            authState = AuthState.Error("Password must be at least 6 characters.")
+            authState = AuthState.Error("Password must be at least 6 characters and contain both letters and numbers.")
             return
         }
 
@@ -151,7 +154,7 @@ class AuthViewModel : ViewModel() {
                     email = email,
                     redirectUrl = "parttimego://reset-password"
                 )
-                authState = AuthState.Success("Password reset link sent! Check your inbox.")
+                authState = AuthState.Success("Password reset link sent! Check your email.")
             } catch (e: Exception) {
                 authState = AuthState.Error(e.localizedMessage ?: "Failed to send reset link.")
             }
@@ -160,7 +163,7 @@ class AuthViewModel : ViewModel() {
 
     fun updatePassword(newPassword: String) {
         if (!isValidPassword(newPassword)) {
-            authState = AuthState.Error("Password must be at least 6 characters.")
+            authState = AuthState.Error("Password must be at least 6 characters and contain both letters and numbers.")
             return
         }
 

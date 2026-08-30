@@ -34,9 +34,10 @@ class JobViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun deleteJob(jobId: String) {
+    fun deleteJob(jobId: String, onComplete: (Result<Unit>) -> Unit = {}) {
         viewModelScope.launch {
-            repository.deleteJob(jobId)
+            val result = repository.deleteJob(jobId)
+            onComplete(result)
         }
     }
 

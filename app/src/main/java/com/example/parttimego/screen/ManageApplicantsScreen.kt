@@ -1,5 +1,6 @@
 package com.example.parttimego.screen
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -21,6 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Color.Companion.Black
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -28,7 +31,6 @@ import androidx.compose.ui.unit.sp
 import com.example.parttimego.ui.theme.DarkNavy
 import com.example.parttimego.ui.theme.MutedText
 import com.example.parttimego.ui.theme.PartTimeGOTheme
-import com.example.parttimego.ui.theme.SoftGrey
 
 // Local UI model — independent of teammate's Application/Worker data classes for now.
 // Once their ApplicationRepository is ready, we map their real model into this shape
@@ -55,6 +57,7 @@ fun ManageApplicantsScreen(
     onPostTabClick: () -> Unit = {},
     onProfileTabClick: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     var selectedFilter by remember { mutableStateOf(ApplicantStatus.PENDING) }
     var pendingAction by remember { mutableStateOf<Pair<ApplicantUiModel, ApplicantStatus>?>(null) }
 
@@ -193,6 +196,11 @@ fun ManageApplicantsScreen(
             confirmButton = {
                 TextButton(onClick = {
                     if (isAccept) onAcceptClick(applicant.id) else onRejectClick(applicant.id)
+                    Toast.makeText(
+                        context,
+                        if (isAccept) "${applicant.name} accepted" else "${applicant.name} rejected",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     pendingAction = null
                 }) {
                     Text(
@@ -245,7 +253,7 @@ private fun ApplicantCard(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, SoftGrey),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Black),
         color = Color.White
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
