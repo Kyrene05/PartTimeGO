@@ -1,6 +1,7 @@
 package com.example.parttimego.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,8 +32,8 @@ fun DashboardScreen(
     thisWeekHires: Int = 8,
     pendingReviewCount: Int = 20,
     jobs: List<JobPost> = emptyList(),
-    onViewAllClick: () -> Unit = {},
     onJobDetailsClick: (String) -> Unit = {},
+    onTotalApplicantsClick: () -> Unit = {},
     onDashboardTabClick: () -> Unit = {},
     onPostTabClick: () -> Unit = {},
     onProfileTabClick: () -> Unit = {}
@@ -100,7 +101,8 @@ fun DashboardScreen(
                     StatCardLarge(
                         icon = Icons.Filled.Groups,
                         value = totalApplicantsCount.toString(),
-                        label = "Total Applicants"
+                        label = "Total Applicants",
+                        onClick = onTotalApplicantsClick
                     )
                     Spacer(modifier = Modifier.height(14.dp))
 
@@ -130,13 +132,6 @@ fun DashboardScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text("My Posted Jobs", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                        Text(
-                            text = "View All",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = DarkNavy,
-                            modifier = Modifier.clip(RoundedCornerShape(4.dp))
-                        )
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -158,10 +153,13 @@ fun DashboardScreen(
 private fun StatCardLarge(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     value: String,
-    label: String
+    label: String,
+    onClick: (() -> Unit)? = null
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .let { if (onClick != null) it.clickable { onClick() } else it },
         shape = RoundedCornerShape(16.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, Black),
         color = Color.White

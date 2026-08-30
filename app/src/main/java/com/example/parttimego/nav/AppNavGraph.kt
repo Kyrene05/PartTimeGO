@@ -18,10 +18,13 @@ import androidx.navigation.navArgument
 import com.example.parttimego.data.JobPost
 import com.example.parttimego.data.SupabaseClient
 import com.example.parttimego.data.local.JobEntity
+import com.example.parttimego.screen.ApplicantStatus
+import com.example.parttimego.screen.ApplicantUiModel
 import com.example.parttimego.screen.DashboardScreen
 import com.example.parttimego.screen.DetailsScreen
 import com.example.parttimego.screen.ForgotPasswordScreen
 import com.example.parttimego.screen.LoginScreen
+import com.example.parttimego.screen.ManageApplicantsScreen
 import com.example.parttimego.screen.PostJobFormData
 import com.example.parttimego.screen.PostJobScreen
 import com.example.parttimego.screen.RegisterScreen
@@ -37,7 +40,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
 import java.util.UUID
 import java.time.Instant
-
+import com.example.parttimego.data.repository.ApplicationRepository
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 // Sealed class for Routes
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
@@ -54,6 +60,8 @@ sealed class Screen(val route: String) {
     object Details : Screen("details/{jobId}") {
         fun createRoute(jobId: String) = "details/$jobId"
     }
+
+    object ManageApplicants : Screen("manage_applicants")
 }
 
 @Composable
@@ -207,11 +215,19 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
         // Dashboard Screen (employer side)
         composable(Screen.Dashboard.route) {
             val jobViewModel: JobViewModel = viewModel()
+            val applicationRepository = remember { ApplicationRepository() }
             val employerId = SupabaseClient.client.auth.currentUserOrNull()?.id
+
+            var totalApplicantsCount by remember { mutableStateOf(0) }
+            var pendingReviewCount by remember { mutableStateOf(0) }
+            var thisWeekHiresCount by remember { mutableStateOf(0) }
 
             LaunchedEffect(employerId) {
                 if (employerId != null) {
                     jobViewModel.refreshJobs(employerId)
+                    totalApplicantsCount = applicationRepository.getApplicationCountForEmployer(employerId)
+                    pendingReviewCount = applicationRepository.getPendingReviewCount(employerId)
+                    thisWeekHiresCount = applicationRepository.getThisWeekHiresCount(employerId)
                 }
             }
 
@@ -220,14 +236,18 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                 .collectAsState(initial = emptyList())
 
             DashboardScreen(
+                activeJobsCount = jobs.size,
+                totalApplicantsCount = totalApplicantsCount,
+                thisWeekHires = thisWeekHiresCount,
+                pendingReviewCount = pendingReviewCount,
                 jobs = jobs.map { it.toDashboardJobPost() },
-                onViewAllClick = { },
                 onJobDetailsClick = { jobId -> navController.navigate(Screen.Details.createRoute(jobId)) },
+                onTotalApplicantsClick = { navController.navigate(Screen.ManageApplicants.route) },
                 onDashboardTabClick = { },
                 onPostTabClick = { navController.navigate(Screen.PostJob.route) },
                 onProfileTabClick = { }
             )
-        } // <-- THIS was the missing closing brace
+        }
 
         // Post Job Screen
         composable(Screen.PostJob.route) {
@@ -335,6 +355,63 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                     onProfileTabClick = { /* TODO: profile screen */ }
                 )
             }
+        }
+
+        //Manage Applicants Screen
+        composable(Screen.ManageApplicants.route) {
+            val employerId = SupabaseClient.client.auth.currentUserOrNull()?.id
+            val applicationRepository = remember { ApplicationRepository() }
+            var applicants by remember { mutableStateOf<List<ApplicantUiModel>>(emptyList()) }
+            val coroutineScope = rememberCoroutineScope()
+
+            LaunchedEffect(employerId) {
+                if (employerId != null) {
+                    val results = applicationRepository.getApplicationsForEmployer(employerId)
+                    applicants = results.map { (app, job, profile) ->
+                        ApplicantUiModel(
+                            id = app.id,
+                            name = profile?.fullName ?: "Applicant ${app.applicantId.take(8)}",
+                            jobTitle = job.title,
+                            location = job.location,
+                            salary = "RM ${job.salary.toInt()} / ${job.salaryPeriod}",
+                            appliedDate = app.appliedAt?.take(10) ?: "",
+                            status = when (app.status) {
+                                "accepted" -> ApplicantStatus.ACCEPTED
+                                "rejected" -> ApplicantStatus.REJECTED
+                                else -> ApplicantStatus.PENDING
+                            }
+                        )
+                    }
+                }
+            }
+
+            ManageApplicantsScreen(
+                applicants = applicants,
+                onBackClick = { navController.popBackStack() },
+                onAcceptClick = { applicationId ->
+                    coroutineScope.launch {
+                        applicationRepository.updateApplicationStatus(applicationId, "accepted")
+                        applicants = applicants.map {
+                            if (it.id == applicationId) it.copy(status = ApplicantStatus.ACCEPTED) else it
+                        }
+                    }
+                },
+                onRejectClick = { applicationId ->
+                    coroutineScope.launch {
+                        applicationRepository.updateApplicationStatus(applicationId, "rejected")
+                        applicants = applicants.map {
+                            if (it.id == applicationId) it.copy(status = ApplicantStatus.REJECTED) else it
+                        }
+                    }
+                },
+                onDashboardTabClick = {
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.Dashboard.route) { inclusive = true }
+                    }
+                },
+                onPostTabClick = { navController.navigate(Screen.PostJob.route) },
+                onProfileTabClick = { }
+            )
         }
 
         // TODO: Job Seeker home

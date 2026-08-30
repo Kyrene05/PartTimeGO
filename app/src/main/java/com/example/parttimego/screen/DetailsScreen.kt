@@ -195,7 +195,7 @@ fun DetailsScreen(
                                 isError = salaryError != null,
                                 supportingText = salaryError?.let { { Text(it, color = Color.Red, fontSize = 12.sp) } },
                                 shape = RoundedCornerShape(10.dp),
-                                colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = SoftGrey, focusedBorderColor = DarkNavy, errorBorderColor = Color.Red),
+                                colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = Color.Black, focusedBorderColor = DarkNavy, errorBorderColor = Color.Red),
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
