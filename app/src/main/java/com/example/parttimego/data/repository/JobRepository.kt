@@ -93,7 +93,9 @@ class JobRepository(context: Context) {
 
     suspend fun deleteJob(jobId: String): Result<Unit> {
         return try {
-            postgrest["jobs"].delete { filter { eq("id", jobId) } }
+            postgrest["jobs"].delete {
+                filter { eq("id", jobId) }
+            }
             jobDao.deleteJob(jobId)
             Result.success(Unit)
         } catch (e: Exception) {

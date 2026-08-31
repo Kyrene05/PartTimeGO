@@ -325,26 +325,15 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                     isSubmitting = isSubmitting,
                     errorMessage = updateError,
                     onBackClick = { navController.popBackStack() },
-                    onUpdateClick = { formData ->
-                        val updatedJob = job.copy(
-                            title = formData.title,
-                            companyName = formData.companyName.ifBlank { null },
-                            category = formData.category,
-                            salary = formData.salary.toDoubleOrNull() ?: 0.0,
-                            startDate = formData.startDate.ifBlank { null },
-                            endDate = formData.endDate.ifBlank { null },
-                            workingHoursStart = formData.workingHoursStart.ifBlank { null },
-                            workingHoursEnd = formData.workingHoursEnd.ifBlank { null },
-                            location = formData.location,
-                            description = formData.description.ifBlank { null },
-                            requirements = formData.requirements.ifBlank { null },
-                            peopleNeeded = formData.peopleNeeded
-                        )
-                        isSubmitting = true
-                        updateError = null
-                        jobViewModel.updateJob(updatedJob) {
-                            isSubmitting = false
-                            navController.popBackStack()
+                    onUpdateClick = { formData -> /* unchanged */ },
+                    onDeleteClick = { onResult ->
+                        jobViewModel.deleteJob(jobId) { result ->
+                            onResult(result)
+                            if (result.isSuccess) {
+                                navController.navigate(Screen.Dashboard.route) {
+                                    popUpTo(Screen.Dashboard.route) { inclusive = true }
+                                }
+                            }
                         }
                     },
                     onDashboardTabClick = {

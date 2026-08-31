@@ -43,7 +43,7 @@ fun DetailsScreen(
     errorMessage: String? = null,
     onBackClick: () -> Unit = {},
     onUpdateClick: (PostJobFormData) -> Unit = {},
-    onDeleteClick: () -> Unit = {},
+    onDeleteClick: (onResult: (Result<Unit>) -> Unit) -> Unit = { _ -> },
     onDashboardTabClick: () -> Unit = {},
     onProfileTabClick: () -> Unit = {}
 ) {
@@ -330,8 +330,13 @@ fun DetailsScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirm = false
-                    onDeleteClick()
-                    Toast.makeText(context, "Job deleted successfully", Toast.LENGTH_SHORT).show()
+                    onDeleteClick { result ->
+                        if (result.isSuccess) {
+                            Toast.makeText(context, "Job deleted successfully", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Failed to delete job", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 }) { Text("Delete", color = Color(0xFFD32F2F), fontWeight = FontWeight.Bold) }
             },
             dismissButton = {

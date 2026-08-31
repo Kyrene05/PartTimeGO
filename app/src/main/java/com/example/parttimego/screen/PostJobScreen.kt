@@ -35,7 +35,8 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-
+import androidx.compose.ui.platform.LocalContext
+import android.content.Context
 data class PostJobFormData(
     val title: String,
     val companyName: String,
@@ -51,6 +52,56 @@ data class PostJobFormData(
     val peopleNeeded: Int
 )
 
+private object PostJobDraftPrefs {
+    private const val PREFS_NAME = "post_job_draft"
+
+    fun save(context: Context, data: PostJobFormData) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putString("title", data.title)
+            .putString("companyName", data.companyName)
+            .putString("category", data.category)
+            .putString("salary", data.salary)
+            .putString("startDate", data.startDate)
+            .putString("endDate", data.endDate)
+            .putString("workingHoursStart", data.workingHoursStart)
+            .putString("workingHoursEnd", data.workingHoursEnd)
+            .putString("location", data.location)
+            .putString("description", data.description)
+            .putString("requirements", data.requirements)
+            .putInt("peopleNeeded", data.peopleNeeded)
+            .apply()
+    }
+
+    fun load(context: Context): PostJobFormData? {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val title = prefs.getString("title", "") ?: ""
+        // If there's no title saved, treat it as "no draft exists" — avoids restoring
+        // an all-empty form and pretending that's a meaningful draft.
+        if (title.isBlank()) return null
+
+        return PostJobFormData(
+            title = title,
+            companyName = prefs.getString("companyName", "") ?: "",
+            category = prefs.getString("category", "Event Crew") ?: "Event Crew",
+            salary = prefs.getString("salary", "") ?: "",
+            startDate = prefs.getString("startDate", "") ?: "",
+            endDate = prefs.getString("endDate", "") ?: "",
+            workingHoursStart = prefs.getString("workingHoursStart", "") ?: "",
+            workingHoursEnd = prefs.getString("workingHoursEnd", "") ?: "",
+            location = prefs.getString("location", "") ?: "",
+            description = prefs.getString("description", "") ?: "",
+            requirements = prefs.getString("requirements", "") ?: "",
+            peopleNeeded = prefs.getInt("peopleNeeded", 1)
+        )
+    }
+
+    fun clear(context: Context) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().clear().apply()
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PostJobScreen(
@@ -61,18 +112,34 @@ fun PostJobScreen(
     onDashboardTabClick: () -> Unit = {},
     onProfileTabClick: () -> Unit = {}
 ) {
-    var title by remember { mutableStateOf("") }
-    var companyName by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("Event Crew") }
-    var salary by remember { mutableStateOf("") }
-    var startDate by remember { mutableStateOf("") }
-    var endDate by remember { mutableStateOf("") }
-    var startTime by remember { mutableStateOf("") }
-    var endTime by remember { mutableStateOf("") }
-    var location by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var requirements by remember { mutableStateOf("") }
-    var peopleNeeded by remember { mutableStateOf(1) }
+    val context = LocalContext.current
+    val draft = remember { PostJobDraftPrefs.load(context) }
+
+    var title by remember { mutableStateOf(draft?.title ?: "") }
+    var companyName by remember { mutableStateOf(draft?.companyName ?: "") }
+    var category by remember { mutableStateOf(draft?.category ?: "Event Crew") }
+    var salary by remember { mutableStateOf(draft?.salary ?: "") }
+    var startDate by remember { mutableStateOf(draft?.startDate ?: "") }
+    var endDate by remember { mutableStateOf(draft?.endDate ?: "") }
+    var startTime by remember { mutableStateOf(draft?.workingHoursStart ?: "") }
+    var endTime by remember { mutableStateOf(draft?.workingHoursEnd ?: "") }
+    var location by remember { mutableStateOf(draft?.location ?: "") }
+    var description by remember { mutableStateOf(draft?.description ?: "") }
+    var requirements by remember { mutableStateOf(draft?.requirements ?: "") }
+    var peopleNeeded by remember { mutableStateOf(draft?.peopleNeeded ?: 1) }
+
+    LaunchedEffect(title, companyName, category, salary, startDate, endDate, startTime, endTime, location, description, requirements, peopleNeeded) {
+        PostJobDraftPrefs.save(
+            context,
+            PostJobFormData(
+                title = title, companyName = companyName, category = category,
+                salary = salary, startDate = startDate, endDate = endDate,
+                workingHoursStart = startTime, workingHoursEnd = endTime,
+                location = location, description = description,
+                requirements = requirements, peopleNeeded = peopleNeeded
+            )
+        )
+    }
 
     // Per-field error messages — null means no error
     var titleError by remember { mutableStateOf<String?>(null) }
@@ -445,6 +512,7 @@ fun PostJobScreen(
                             peopleNeeded = peopleNeeded
                         )
                     )
+                    PostJobDraftPrefs.clear(context)
                 }) { Text("Post", color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
