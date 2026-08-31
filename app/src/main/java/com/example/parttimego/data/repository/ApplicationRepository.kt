@@ -30,8 +30,51 @@ data class ApplicantProfileDto(
     val id: String,
     @SerialName("full_name") val fullName: String? = null
 )
+
 class ApplicationRepository {
     private val postgrest get() = SupabaseClient.client.postgrest
+
+    suspend fun getApplicationsForEmployer(employerId: String): List<Triple<JobApplicationDto, JobSummaryDto, ApplicantProfileDto?>> {
+        return try {
+            val jobs = postgrest["jobs"]
+                .select {
+                    filter { eq("employer_id", employerId) }
+                }
+                .decodeList<JobSummaryDto>()
+
+            if (jobs.isEmpty()) return emptyList()
+
+            val jobIds = jobs.map { it.id }
+
+            val applications = postgrest["job_applications"]
+                .select {
+                    filter { isIn("job_id", jobIds) }
+                }
+                .decodeList<JobApplicationDto>()
+
+            if (applications.isEmpty()) return emptyList()
+
+            val applicantIds = applications.map { it.applicantId }.distinct()
+
+            val profiles = postgrest["profiles"]
+                .select {
+                    filter { isIn("id", applicantIds) }
+                }
+                .decodeList<ApplicantProfileDto>()
+
+            val jobsById = jobs.associateBy { it.id }
+            val profilesById = profiles.associateBy { it.id }
+
+            applications.mapNotNull { app ->
+                val job = jobsById[app.jobId] ?: return@mapNotNull null
+                val profile = profilesById[app.applicantId]
+                Triple(app, job, profile)
+            }
+        } catch (e: Exception) {
+            // Offline/network failure — return empty rather than crashing.
+            emptyList()
+        }
+    }
 
     suspend fun getApplicationCountForEmployer(employerId: String): Int {
         return getApplicationsForEmployer(employerId).size
@@ -54,49 +97,16 @@ class ApplicationRepository {
         }
     }
 
-    // Fetch every application for jobs owned by this employer, joined with job info
-    suspend fun getApplicationsForEmployer(employerId: String): List<Triple<JobApplicationDto, JobSummaryDto, ApplicantProfileDto?>> {
-        val jobs = postgrest["jobs"]
-            .select {
-                filter { eq("employer_id", employerId) }
-            }
-            .decodeList<JobSummaryDto>()
-
-        if (jobs.isEmpty()) return emptyList()
-
-        val jobIds = jobs.map { it.id }
-
-        val applications = postgrest["job_applications"]
-            .select {
-                filter { isIn("job_id", jobIds) }
-            }
-            .decodeList<JobApplicationDto>()
-
-        if (applications.isEmpty()) return emptyList()
-
-        val applicantIds = applications.map { it.applicantId }.distinct()
-
-        val profiles = postgrest["profiles"]
-            .select {
-                filter { isIn("id", applicantIds) }
-            }
-            .decodeList<ApplicantProfileDto>()
-
-        val jobsById = jobs.associateBy { it.id }
-        val profilesById = profiles.associateBy { it.id }
-
-        return applications.mapNotNull { app ->
-            val job = jobsById[app.jobId] ?: return@mapNotNull null
-            val profile = profilesById[app.applicantId]
-            Triple(app, job, profile)
-        }
-    }
-
     suspend fun updateApplicationStatus(applicationId: String, status: String) {
-        postgrest["job_applications"].update(
-            mapOf("status" to status)
-        ) {
-            filter { eq("id", applicationId) }
+        try {
+            postgrest["job_applications"].update(
+                mapOf("status" to status)
+            ) {
+                filter { eq("id", applicationId) }
+            }
+        } catch (e: Exception) {
+            // Offline/network failure — silently fail for now.
+            // Consider surfacing this to the UI if you want user-visible feedback.
         }
     }
 }
