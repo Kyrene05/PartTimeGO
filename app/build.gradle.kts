@@ -19,7 +19,7 @@ android {
     defaultConfig {
         applicationId = "com.example.parttimego"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 
@@ -80,4 +80,7 @@ dependencies {
 
     //Navigation
     implementation("androidx.navigation:navigation-compose:2.8.5")
+
+    //coil
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }
