@@ -42,8 +42,12 @@ import java.util.UUID
 import java.time.Instant
 import com.example.parttimego.data.repository.ApplicationRepository
 import androidx.compose.runtime.rememberCoroutineScope
+import com.example.parttimego.screen.JobStatusFilter
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import java.time.format.DateTimeFormatter
+import java.time.LocalDate
+
 // Sealed class for Routes
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
@@ -63,7 +67,19 @@ sealed class Screen(val route: String) {
 
     object ManageApplicants : Screen("manage_applicants")
 }
+private val DASHBOARD_DATE_FORMAT = DateTimeFormatter.ofPattern("MMM dd, yyyy")
 
+private fun JobEntity.toStatusFilter(): JobStatusFilter {
+    val today = LocalDate.now()
+    val start = startDate?.let { runCatching { LocalDate.parse(it, DASHBOARD_DATE_FORMAT) }.getOrNull() }
+    val end = endDate?.let { runCatching { LocalDate.parse(it, DASHBOARD_DATE_FORMAT) }.getOrNull() }
+
+    return when {
+        start != null && today.isBefore(start) -> JobStatusFilter.UPCOMING
+        end != null && today.isAfter(end) -> JobStatusFilter.ENDED
+        else -> JobStatusFilter.ACTIVE
+    }
+}
 @Composable
 fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel = viewModel()) {
 
@@ -234,13 +250,29 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             val jobs by (employerId?.let { jobViewModel.getJobsForEmployer(it) }
                 ?: flowOf(emptyList()))
                 .collectAsState(initial = emptyList())
+            var searchQuery by remember { mutableStateOf("") }
+            var selectedCategory by remember { mutableStateOf<String?>(null) }
+            var selectedStatus by remember { mutableStateOf<JobStatusFilter?>(null) }
+
+            val filteredJobs = jobs.filter { job ->
+                val matchesSearch = searchQuery.isBlank() || job.title.contains(searchQuery, ignoreCase = true)
+                val matchesCategory = selectedCategory == null || job.category == selectedCategory
+                val matchesStatus = selectedStatus == null || job.toStatusFilter() == selectedStatus
+                matchesSearch && matchesCategory && matchesStatus
+            }
 
             DashboardScreen(
-                activeJobsCount = jobs.size,
+                activeJobsCount = jobs.size,  // total, not filtered
                 totalApplicantsCount = totalApplicantsCount,
                 thisWeekHires = thisWeekHiresCount,
                 pendingReviewCount = pendingReviewCount,
-                jobs = jobs.map { it.toDashboardJobPost() },
+                jobs = filteredJobs.map { it.toDashboardJobPost() },
+                searchQuery = searchQuery,
+                onSearchQueryChange = { searchQuery = it },
+                selectedCategory = selectedCategory,
+                onCategorySelected = { selectedCategory = it },
+                selectedStatus = selectedStatus,
+                onStatusSelected = { selectedStatus = it },
                 onJobDetailsClick = { jobId -> navController.navigate(Screen.Details.createRoute(jobId)) },
                 onTotalApplicantsClick = { navController.navigate(Screen.ManageApplicants.route) },
                 onDashboardTabClick = { },

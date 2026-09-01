@@ -9,7 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,6 +25,14 @@ import com.example.parttimego.ui.theme.MutedText
 import com.example.parttimego.ui.theme.PartTimeGOTheme
 import com.example.parttimego.ui.theme.SoftGrey
 
+// Mirrors JobStatus in AppNavGraph.kt — used only for the filter dropdown label/options here.
+enum class JobStatusFilter(val label: String) {
+    UPCOMING("Upcoming"),
+    ACTIVE("Active"),
+    ENDED("Ended")
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     activeJobsCount: Int = 2,
@@ -32,6 +40,13 @@ fun DashboardScreen(
     thisWeekHires: Int = 8,
     pendingReviewCount: Int = 20,
     jobs: List<JobPost> = emptyList(),
+    searchQuery: String = "",
+    onSearchQueryChange: (String) -> Unit = {},
+    categories: List<String> = listOf("Event Crew", "Promoter", "Retail", "F&B", "Other"),
+    selectedCategory: String? = null,
+    onCategorySelected: (String?) -> Unit = {},
+    selectedStatus: JobStatusFilter? = null,
+    onStatusSelected: (JobStatusFilter?) -> Unit = {},
     onJobDetailsClick: (String) -> Unit = {},
     onTotalApplicantsClick: () -> Unit = {},
     onDashboardTabClick: () -> Unit = {},
@@ -136,14 +151,133 @@ fun DashboardScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    jobs.forEach { job ->
-                        JobPostCard(
-                            job = job,
-                            onViewDetailsClick = { onJobDetailsClick(job.id) }
+                    // --- Search bar ---
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = onSearchQueryChange,
+                        placeholder = { Text("Search by job title", fontSize = 13.sp) },
+                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search", tint = MutedText) },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { onSearchQueryChange("") }) {
+                                    Icon(Icons.Filled.Close, contentDescription = "Clear search", tint = MutedText)
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor = Color.Black,
+                            focusedBorderColor = DarkNavy
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // --- Filter dropdowns: Category + Status ---
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        FilterDropdown(
+                            label = "Category",
+                            selectedLabel = selectedCategory,
+                            options = categories,
+                            optionLabel = { it },
+                            onOptionSelected = { onCategorySelected(it) },
+                            modifier = Modifier.weight(1f)
                         )
-                        Spacer(modifier = Modifier.height(14.dp))
+                        FilterDropdown(
+                            label = "Status",
+                            selectedLabel = selectedStatus?.label,
+                            options = JobStatusFilter.entries,
+                            optionLabel = { it.label },
+                            onOptionSelected = { onStatusSelected(it) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    if (jobs.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("No jobs match your search/filters", fontSize = 13.sp, color = MutedText)
+                        }
+                    } else {
+                        jobs.forEach { job ->
+                            JobPostCard(
+                                job = job,
+                                onViewDetailsClick = { onJobDetailsClick(job.id) }
+                            )
+                            Spacer(modifier = Modifier.height(14.dp))
+                        }
                     }
                 }
+            }
+        }
+    }
+}
+
+// Generic dropdown used for both Category and Status filters.
+// `null` selection always means "show all" — represented by the label placeholder.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun <T> FilterDropdown(
+    label: String,
+    selectedLabel: String?,
+    options: List<T>,
+    optionLabel: (T) -> String,
+    onOptionSelected: (T?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = selectedLabel ?: "All $label",
+            onValueChange = { },
+            readOnly = true,
+            singleLine = true,
+            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            shape = RoundedCornerShape(10.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedBorderColor = Color.Black,
+                focusedBorderColor = DarkNavy,
+                disabledTextColor = Color.Black
+            ),
+            modifier = Modifier
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable, true)
+                .fillMaxWidth()
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            // "All" option clears the filter
+            DropdownMenuItem(
+                text = { Text("All $label", fontSize = 13.sp) },
+                onClick = {
+                    onOptionSelected(null)
+                    expanded = false
+                }
+            )
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(optionLabel(option), fontSize = 13.sp) },
+                    onClick = {
+                        onOptionSelected(option)
+                        expanded = false
+                    }
+                )
             }
         }
     }
