@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.rpc
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +23,7 @@ import kotlinx.serialization.json.jsonPrimitive
 data class EmployerProfileDto(
     @SerialName("full_name") val userName: String? = null,
     @SerialName("company_name") val companyName: String? = null,
-    @SerialName("company_phone") val companyPhone: String? = null,
+    @SerialName("phone") val phone: String? = null,
     @SerialName("company_background") val companyBackground: String? = null,
     @SerialName("avatar_url") val avatarUrl: String? = null
 )
@@ -30,7 +31,7 @@ data class EmployerProfileDto(
 data class EmployerProfileUiState(
     val userName: String = "",
     val companyName: String = "",
-    val companyPhone: String = "",
+    val phone: String = "",
     val companyEmail: String = "",
     val companyBackground: String = "",
     val avatarUrl: String? = null,
@@ -60,18 +61,15 @@ class EmployerProfileViewModel(
                 val userId = currentUser?.id ?: return@launch
                 val email = currentUser.email.orEmpty()
 
-                // 1. 尝试从注册时的 Auth User Metadata 中提取名字
                 val authMetaData = currentUser.userMetadata
                 val registeredName = authMetaData?.get("full_name")?.jsonPrimitive?.content
                     ?: authMetaData?.get("user_name")?.jsonPrimitive?.content
                     ?: authMetaData?.get("name")?.jsonPrimitive?.content
 
-                // 2. 从 Supabase `profiles` 数据库表中查询数据
                 val profile = supabaseClient.postgrest["profiles"]
                     .select { filter { eq("id", userId) } }
                     .decodeSingleOrNull<EmployerProfileDto>()
 
-                // 3. 优先级匹配名字：数据库 > 注册元数据 > Email前缀
                 val finalUserName = when {
                     !profile?.userName.isNullOrBlank() -> profile.userName
                     !registeredName.isNullOrBlank() -> registeredName
@@ -79,8 +77,7 @@ class EmployerProfileViewModel(
                     else -> ""
                 }
 
-                // 4. 格式化电话号码：如果数据库里的号码没有 +60 前缀，自动加上
-                val rawPhone = profile?.companyPhone.orEmpty().trim()
+                val rawPhone = profile?.phone.orEmpty().trim()
                 val formattedPhone = when {
                     rawPhone.isBlank() -> ""
                     rawPhone.startsWith("+60") -> rawPhone
@@ -92,7 +89,7 @@ class EmployerProfileViewModel(
                     it.copy(
                         userName = finalUserName,
                         companyName = profile?.companyName.orEmpty(),
-                        companyPhone = formattedPhone,
+                        phone = formattedPhone,
                         companyBackground = profile?.companyBackground.orEmpty(),
                         companyEmail = email,
                         avatarUrl = profile?.avatarUrl,
@@ -112,7 +109,7 @@ class EmployerProfileViewModel(
 
     fun onUserNameChange(value: String) { _uiState.update { it.copy(userName = value) } }
     fun onCompanyNameChange(value: String) { _uiState.update { it.copy(companyName = value) } }
-    fun onPhoneChange(value: String) { _uiState.update { it.copy(companyPhone = value) } }
+    fun onPhoneChange(value: String) { _uiState.update { it.copy(phone = value) } }
     fun onCompanyBackgroundChange(value: String) { _uiState.update { it.copy(companyBackground = value) } }
     fun onAvatarSelected(uri: Uri) { _uiState.update { it.copy(selectedImageUri = uri) } }
     fun resetUpdateSuccess() { _uiState.update { it.copy(updateSuccess = false) } }
@@ -120,6 +117,33 @@ class EmployerProfileViewModel(
 
     fun saveProfile(context: Context) {
         viewModelScope.launch {
+            val companyName = _uiState.value.companyName.trim()
+            val rawDigits = _uiState.value.phone
+                .removePrefix("+60")
+                .removePrefix("60")
+                .filter { it.isDigit() }
+
+            if (companyName.isBlank()) {
+                _uiState.update {
+                    it.copy(errorMessage = "Company name is required.")
+                }
+                return@launch
+            }
+
+            if (rawDigits.isBlank()) {
+                _uiState.update {
+                    it.copy(errorMessage = "Phone number is required.")
+                }
+                return@launch
+            }
+
+            if (rawDigits.length < 8) {
+                _uiState.update {
+                    it.copy(errorMessage = "Invalid phone number (must be at least 8 digits)")
+                }
+                return@launch
+            }
+
             _uiState.update { it.copy(isSaving = true) }
             try {
                 val userId = supabaseClient.auth.currentUserOrNull()?.id
@@ -127,7 +151,6 @@ class EmployerProfileViewModel(
 
                 var uploadedAvatarUrl = _uiState.value.avatarUrl
 
-                // 上传头像逻辑
                 _uiState.value.selectedImageUri?.let { uri ->
                     val inputStream = context.contentResolver.openInputStream(uri)
                     val bytes = inputStream?.use { it.readBytes() }
@@ -144,18 +167,12 @@ class EmployerProfileViewModel(
                     }
                 }
 
-                // 处理保存到数据库的手机号格式，确保带上 +60
-                val rawInputPhone = _uiState.value.companyPhone
-                    .removePrefix("+60")
-                    .removePrefix("60")
-                    .trim()
-                val fullPhoneToSave = if (rawInputPhone.isNotBlank()) "+60$rawInputPhone" else ""
+                val fullPhoneToSave = "+60$rawDigits"
 
-                // 构建更新参数
                 val updateParams = buildMap {
                     put("full_name", _uiState.value.userName.trim())
-                    put("company_name", _uiState.value.companyName.trim())
-                    put("company_phone", fullPhoneToSave)
+                    put("company_name", companyName)
+                    put("phone", fullPhoneToSave)
                     put("company_background", _uiState.value.companyBackground.trim())
                     uploadedAvatarUrl?.let { put("avatar_url", it) }
                 }
@@ -168,7 +185,7 @@ class EmployerProfileViewModel(
                     it.copy(
                         isSaving = false,
                         updateSuccess = true,
-                        companyPhone = fullPhoneToSave,
+                        phone = fullPhoneToSave,
                         avatarUrl = uploadedAvatarUrl,
                         selectedImageUri = null
                     )
@@ -180,6 +197,26 @@ class EmployerProfileViewModel(
                         errorMessage = "Save failed: ${e.localizedMessage}"
                     )
                 }
+            }
+        }
+    }
+
+    fun deleteAccount(onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val userId = supabaseClient.auth.currentUserOrNull()?.id
+                if (userId != null) {
+                    // 1. 调用 Supabase 后端的 RPC 函数（以 SECURITY DEFINER 权限一次性级联清理关联表 + auth.users）
+                    supabaseClient.postgrest.rpc("delete_current_user")
+
+                    // 2. 登出 Auth session
+                    supabaseClient.auth.signOut()
+                    onResult(true, null)
+                } else {
+                    onResult(false, "User not authenticated")
+                }
+            } catch (e: Exception) {
+                onResult(false, e.localizedMessage ?: "Failed to delete account")
             }
         }
     }

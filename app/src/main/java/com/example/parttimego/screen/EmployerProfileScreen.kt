@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -193,6 +192,7 @@ fun EmployerProfileScreen(
     }
 
     Scaffold(
+        containerColor = DarkNavy, // 设置底层背景为深蓝色，消除顶部状态栏区域的白块
         bottomBar = {
             EmployerBottomNavigationBar(
                 selectedTab = selectedTab,
@@ -205,7 +205,6 @@ fun EmployerProfileScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .background(DarkNavy)
-                .statusBarsPadding()
         ) {
             // Header Profile Section
             Column(
@@ -299,18 +298,18 @@ fun EmployerProfileScreen(
                             // Company Phone or Clean Clickable Prompt
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.clickable(enabled = uiState.companyPhone.isBlank()) { onEditProfileClick() }
+                                modifier = Modifier.clickable(enabled = uiState.phone.isBlank()) { onEditProfileClick() }
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Phone,
                                     contentDescription = null,
-                                    tint = if (uiState.companyPhone.isNotBlank()) Color.White.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f),
+                                    tint = if (uiState.phone.isNotBlank()) Color.White.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f),
                                     modifier = Modifier.size(13.dp)
                                 )
-                                Spacer(modifier = Modifier.width(6.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = if (uiState.companyPhone.isNotBlank()) uiState.companyPhone else "+ Add Phone",
-                                    color = if (uiState.companyPhone.isNotBlank()) Color.White.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.6f),
+                                    text = if (uiState.phone.isNotBlank()) uiState.phone else "+ Add Phone",
+                                    color = if (uiState.phone.isNotBlank()) Color.White.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.6f),
                                     fontSize = 12.sp,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -476,7 +475,7 @@ fun EmployerProfileScreenPreview() {
             uiState = EmployerProfileUiState(
                 userName = "Cheng",
                 companyName = "",
-                companyPhone = "",
+                phone = "",
                 companyEmail = "jane@techsolutions.com",
                 isLoading = false
             )

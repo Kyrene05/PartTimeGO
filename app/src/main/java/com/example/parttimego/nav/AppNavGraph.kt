@@ -23,6 +23,7 @@ import com.example.parttimego.data.local.JobEntity
 import com.example.parttimego.data.repository.ApplicationRepository
 import com.example.parttimego.screen.ApplicantStatus
 import com.example.parttimego.screen.ApplicantUiModel
+import com.example.parttimego.screen.ChangePasswordRoute
 import com.example.parttimego.screen.DashboardScreen
 import com.example.parttimego.screen.DetailsScreen
 import com.example.parttimego.screen.EditEmployerProfileRoute
@@ -31,10 +32,12 @@ import com.example.parttimego.screen.ForgotPasswordScreen
 import com.example.parttimego.screen.JobStatusFilter
 import com.example.parttimego.screen.LoginScreen
 import com.example.parttimego.screen.ManageApplicantsScreen
+import com.example.parttimego.screen.MoreOptionsScreen
 import com.example.parttimego.screen.PostJobFormData
 import com.example.parttimego.screen.PostJobScreen
 import com.example.parttimego.screen.RegisterScreen
 import com.example.parttimego.screen.SplashScreen
+import com.example.parttimego.screen.TermsAndConditionsScreen
 import com.example.parttimego.screen.UpdatePasswordScreen
 import com.example.parttimego.viewmodel.AuthState
 import com.example.parttimego.viewmodel.AuthViewModel
@@ -68,6 +71,9 @@ sealed class Screen(val route: String) {
     object JobSeekerHome : Screen("job_seeker_home") // TODO: change to job seeker homepage
     object EmployerProfile : Screen("employer_profile")
     object EditEmployerProfile : Screen("edit_employer_profile")
+    object ChangePassword : Screen("change_password")
+    object TermsAndConditions : Screen("terms_and_conditions")
+    object MoreOptions : Screen("more_options")
 
     object Details : Screen("details/{jobId}") {
         fun createRoute(jobId: String) = "details/$jobId"
@@ -507,13 +513,13 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                     navController.navigate(Screen.EditEmployerProfile.route)
                 },
                 onChangePasswordClick = {
-                    // TODO: navigate to Change Password Screen when implemented
+                    navController.navigate(Screen.ChangePassword.route)
                 },
                 onTermsClick = {
-                    // TODO: navigate to Terms & Conditions Screen
+                    navController.navigate(Screen.TermsAndConditions.route)
                 },
                 onMoreOptionsClick = {
-                    // TODO: navigate to More Options Screen
+                    navController.navigate(Screen.MoreOptions.route)
                 },
                 onLogoutNavigateToLogin = {
                     navController.navigate(Screen.Login.route) {
@@ -534,6 +540,48 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                 viewModel = editViewModel,
                 onBackClick = {
                     navController.popBackStack()
+                }
+            )
+        }
+
+        // Change Password Screen
+        composable(Screen.ChangePassword.route) {
+            ChangePasswordRoute(
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onForgotPasswordClick = {
+                    navController.navigate(Screen.ForgotPassword.route)
+                }
+            )
+        }
+
+        // Terms and Conditions Screen
+        composable(Screen.TermsAndConditions.route) {
+            TermsAndConditionsScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // More Options Screen
+        composable(Screen.MoreOptions.route) {
+            val profileViewModel: EmployerProfileViewModel = viewModel(
+                factory = EmployerProfileViewModelFactory(SupabaseClient.client)
+            )
+
+            MoreOptionsScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onDeleteAccountConfirm = { onComplete ->
+                    profileViewModel.deleteAccount(onComplete)
+                },
+                onAccountDeleted = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
                 }
             )
         }

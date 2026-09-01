@@ -172,7 +172,7 @@ fun ForgotPasswordScreen(
 
                     TextButton(onClick = onBackToLoginClick) {
                         Text(
-                            text = "Back to Log In",
+                            text = "Back to Previous Page",
                             color = DarkNavy,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
