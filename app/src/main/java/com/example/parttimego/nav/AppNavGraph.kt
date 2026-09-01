@@ -45,6 +45,7 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionSource
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -115,10 +116,23 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             Screen.Splash.route,
             exitTransition = { fadeOut(animationSpec = tween(700)) }
         ) {
+            val coroutineScope = rememberCoroutineScope()
+
             SplashScreen(
                 onNavigateToLogin = {
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    coroutineScope.launch {
+                        val status = SupabaseClient.client.auth.sessionStatus.first { it !is SessionStatus.Initializing }
+
+                        val destination = if (status is SessionStatus.Authenticated) {
+                            val role = authViewModel.getCurrentUserRole()
+                            if (role == "employer") Screen.Dashboard.route else Screen.JobSeekerHome.route
+                        } else {
+                            Screen.Login.route
+                        }
+
+                        navController.navigate(destination) {
+                            popUpTo(Screen.Splash.route) { inclusive = true }
+                        }
                     }
                 }
             )
