@@ -65,11 +65,12 @@ dependencies {
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
 
-    // Supabase Ktor Client & Modules
+    // Supabase Ktor Client & Modules & Storage
     implementation(platform("io.github.jan-tennert.supabase:bom:3.0.1"))
     implementation("io.github.jan-tennert.supabase:postgrest-kt")
     implementation("io.github.jan-tennert.supabase:auth-kt")
     implementation("io.github.jan-tennert.supabase:realtime-kt")
+    implementation("io.github.jan-tennert.supabase:storage-kt:<supabase_version>")
 
     // Ktor Engine (Required by Supabase Kotlin SDK)
     implementation("io.ktor:ktor-client-android:3.0.1")

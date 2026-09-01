@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreHoriz
@@ -46,6 +47,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,104 +65,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.example.parttimego.data.SupabaseClient
 import com.example.parttimego.ui.theme.DarkNavy
 import com.example.parttimego.ui.theme.MutedText
 import com.example.parttimego.ui.theme.PartTimeGOTheme
 import com.example.parttimego.ui.theme.SoftGrey
-import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.postgrest.from
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import com.example.parttimego.viewmodel.EmployerProfileUiState
+import com.example.parttimego.viewmodel.EmployerProfileViewModel
 
-// UI State
-data class EmployerProfileUiState(
-    val companyName: String = "",
-    val companyPhone: String = "",
-    val companyEmail: String = "",
-    val avatarUrl: String? = null,
-    val isLoading: Boolean = true
-)
-
-@Serializable
-private data class EmployerProfileDto(
-    val id: String,
-    @SerialName("company_name") val companyName: String? = null,
-    @SerialName("full_name") val fullName: String? = null,
-    val phone: String? = null,
-    val email: String? = null,
-    @SerialName("avatar_url") val avatarUrl: String? = null
-)
-
-// ViewModel
-class EmployerProfileViewModel : ViewModel() {
-
-    private val _uiState = MutableStateFlow(EmployerProfileUiState())
-    val uiState: StateFlow<EmployerProfileUiState> = _uiState.asStateFlow()
-
-    init {
-        loadEmployerProfile()
-    }
-
-    fun loadEmployerProfile() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            try {
-                val currentUser = SupabaseClient.client.auth.currentUserOrNull()
-                if (currentUser != null) {
-                    val userId = currentUser.id
-                    val authEmail = currentUser.email ?: ""
-
-                    val profile = SupabaseClient.client.from("profiles")
-                        .select {
-                            filter {
-                                eq("id", userId)
-                            }
-                        }
-                        .decodeSingleOrNull<EmployerProfileDto>()
-
-                    _uiState.update {
-                        it.copy(
-                            companyName = profile?.companyName ?: profile?.fullName ?: "",
-                            companyPhone = profile?.phone ?: "",
-                            companyEmail = profile?.email ?: authEmail,
-                            avatarUrl = profile?.avatarUrl,
-                            isLoading = false
-                        )
-                    }
-                } else {
-                    _uiState.update { it.copy(isLoading = false) }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _uiState.update { it.copy(isLoading = false) }
-            }
-        }
-    }
-
-    fun logout(onLogoutSuccess: () -> Unit) {
-        viewModelScope.launch {
-            try {
-                SupabaseClient.client.auth.signOut()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                onLogoutSuccess()
-            }
-        }
-    }
-}
-
-// Enums & Models
 enum class EmployerBottomTab(val label: String, val icon: ImageVector) {
     DASHBOARD("Dashboard", Icons.Default.BarChart),
     POST("Post", Icons.Default.Add),
@@ -207,6 +120,10 @@ fun EmployerProfileRoute(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.loadUserProfile()
+    }
 
     EmployerProfileScreen(
         uiState = uiState,
@@ -265,6 +182,16 @@ fun EmployerProfileScreen(
         )
     }
 
+    // Displays name; falls back to email string before @ or fallback text if name is not set
+    val displayName = remember(uiState.userName, uiState.companyEmail, uiState.companyName) {
+        when {
+            uiState.userName.isNotBlank() -> uiState.userName
+            uiState.companyEmail.isNotBlank() -> uiState.companyEmail.substringBefore("@")
+            uiState.companyName.isNotBlank() -> uiState.companyName
+            else -> "User"
+        }
+    }
+
     Scaffold(
         bottomBar = {
             EmployerBottomNavigationBar(
@@ -284,13 +211,13 @@ fun EmployerProfileScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 32.dp)
+                    .padding(horizontal = 20.dp, vertical = 28.dp)
             ) {
                 if (uiState.isLoading) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(76.dp),
+                            .height(84.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(color = Color.White)
@@ -300,74 +227,130 @@ fun EmployerProfileScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
                     ) {
+                        // Profile Avatar
                         Box(
                             modifier = Modifier
-                                .size(76.dp)
+                                .size(84.dp)
                                 .clip(CircleShape)
-                                .background(SoftGrey),
-                            contentAlignment = Alignment.Center
+                                .background(Color.White.copy(alpha = 0.2f))
+                                .padding(3.dp)
                         ) {
-                            if (!uiState.avatarUrl.isNullOrBlank()) {
-                                AsyncImage(
-                                    model = uiState.avatarUrl,
-                                    contentDescription = "Company Avatar",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.Business,
-                                    contentDescription = "Default Avatar",
-                                    tint = DarkNavy,
-                                    modifier = Modifier.size(40.dp)
-                                )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .background(SoftGrey),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (!uiState.avatarUrl.isNullOrBlank()) {
+                                    AsyncImage(
+                                        model = uiState.avatarUrl,
+                                        contentDescription = "Employer Avatar",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = "Default Avatar",
+                                        tint = DarkNavy,
+                                        modifier = Modifier.size(42.dp)
+                                    )
+                                }
                             }
                         }
 
                         Spacer(modifier = Modifier.width(18.dp))
 
+                        // User & Profile Details Area
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = uiState.companyName.ifBlank { "Company Name" },
+                                text = displayName,
                                 color = Color.White,
-                                fontSize = 20.sp,
+                                fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
+
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = uiState.companyPhone.ifBlank { "No phone number added" },
-                                color = Color.White.copy(alpha = 0.8f),
-                                fontSize = 14.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = uiState.companyEmail.ifBlank { "No email added" },
-                                color = Color.White.copy(alpha = 0.8f),
-                                fontSize = 14.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clickable(enabled = uiState.companyName.isBlank()) { onEditProfileClick() }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Business,
+                                    contentDescription = null,
+                                    tint = if (uiState.companyName.isNotBlank()) Color.White.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (uiState.companyName.isNotBlank()) uiState.companyName else "+ Add Company",
+                                    color = if (uiState.companyName.isNotBlank()) Color.White.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.6f),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            // Company Phone or Clean Clickable Prompt
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clickable(enabled = uiState.companyPhone.isBlank()) { onEditProfileClick() }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Phone,
+                                    contentDescription = null,
+                                    tint = if (uiState.companyPhone.isNotBlank()) Color.White.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (uiState.companyPhone.isNotBlank()) uiState.companyPhone else "+ Add Phone",
+                                    color = if (uiState.companyPhone.isNotBlank()) Color.White.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.6f),
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            if (uiState.companyEmail.isNotBlank()) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Email,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = uiState.companyEmail,
+                                        color = Color.White.copy(alpha = 0.8f),
+                                        fontSize = 12.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            // Main Menu List
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                 color = Color.White
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(start = 20.dp, end = 20.dp, top = 35.dp, bottom = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     menuItems.forEachIndexed { index, item ->
                         Surface(
@@ -454,7 +437,7 @@ private fun ProfileMenuItemRow(item: ProfileMenuItem) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -463,12 +446,12 @@ private fun ProfileMenuItemRow(item: ProfileMenuItem) {
                 imageVector = item.icon,
                 contentDescription = item.title,
                 tint = iconTint,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(22.dp)
             )
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(14.dp))
             Text(
                 text = item.title,
-                fontSize = 16.sp,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
                 color = textColor
             )
@@ -479,7 +462,7 @@ private fun ProfileMenuItemRow(item: ProfileMenuItem) {
                 imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                 contentDescription = "Navigate",
                 tint = MutedText,
-                modifier = Modifier.size(14.dp)
+                modifier = Modifier.size(13.dp)
             )
         }
     }
@@ -490,7 +473,13 @@ private fun ProfileMenuItemRow(item: ProfileMenuItem) {
 fun EmployerProfileScreenPreview() {
     PartTimeGOTheme {
         EmployerProfileScreen(
-            uiState = EmployerProfileUiState(isLoading = false)
+            uiState = EmployerProfileUiState(
+                userName = "Cheng",
+                companyName = "",
+                companyPhone = "",
+                companyEmail = "jane@techsolutions.com",
+                isLoading = false
+            )
         )
     }
 }

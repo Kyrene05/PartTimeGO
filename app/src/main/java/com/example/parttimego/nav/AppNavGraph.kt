@@ -20,12 +20,15 @@ import androidx.navigation.navArgument
 import com.example.parttimego.data.JobPost
 import com.example.parttimego.data.SupabaseClient
 import com.example.parttimego.data.local.JobEntity
+import com.example.parttimego.data.repository.ApplicationRepository
 import com.example.parttimego.screen.ApplicantStatus
 import com.example.parttimego.screen.ApplicantUiModel
 import com.example.parttimego.screen.DashboardScreen
 import com.example.parttimego.screen.DetailsScreen
+import com.example.parttimego.screen.EditEmployerProfileRoute
 import com.example.parttimego.screen.EmployerProfileRoute
 import com.example.parttimego.screen.ForgotPasswordScreen
+import com.example.parttimego.screen.JobStatusFilter
 import com.example.parttimego.screen.LoginScreen
 import com.example.parttimego.screen.ManageApplicantsScreen
 import com.example.parttimego.screen.PostJobFormData
@@ -35,22 +38,19 @@ import com.example.parttimego.screen.SplashScreen
 import com.example.parttimego.screen.UpdatePasswordScreen
 import com.example.parttimego.viewmodel.AuthState
 import com.example.parttimego.viewmodel.AuthViewModel
+import com.example.parttimego.viewmodel.EmployerProfileViewModel
+import com.example.parttimego.viewmodel.EmployerProfileViewModelFactory
 import com.example.parttimego.viewmodel.JobViewModel
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionSource
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.flowOf
-import java.util.UUID
-import java.time.Instant
-import com.example.parttimego.data.repository.ApplicationRepository
-import androidx.compose.runtime.rememberCoroutineScope
-import com.example.parttimego.screen.JobStatusFilter
 import kotlinx.coroutines.launch
-import java.time.format.DateTimeFormatter
+import java.time.Instant
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.UUID
 
 // Sealed class for Routes
 sealed class Screen(val route: String) {
@@ -65,6 +65,7 @@ sealed class Screen(val route: String) {
     object PostJob : Screen("post_job")
     object JobSeekerHome : Screen("job_seeker_home") // TODO: change to job seeker homepage
     object EmployerProfile : Screen("employer_profile")
+    object EditEmployerProfile : Screen("edit_employer_profile")
 
     object Details : Screen("details/{jobId}") {
         fun createRoute(jobId: String) = "details/$jobId"
@@ -72,6 +73,7 @@ sealed class Screen(val route: String) {
 
     object ManageApplicants : Screen("manage_applicants")
 }
+
 private val DASHBOARD_DATE_FORMAT = DateTimeFormatter.ofPattern("MMM dd, yyyy")
 
 private fun JobEntity.toStatusFilter(): JobStatusFilter {
@@ -85,6 +87,7 @@ private fun JobEntity.toStatusFilter(): JobStatusFilter {
         else -> JobStatusFilter.ACTIVE
     }
 }
+
 @Composable
 fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel = viewModel()) {
 
@@ -446,7 +449,17 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
 
         // Employer Profile Screen
         composable(Screen.EmployerProfile.route) {
+            val profileViewModel: EmployerProfileViewModel = viewModel(
+                factory = EmployerProfileViewModelFactory(SupabaseClient.client)
+            )
+
+            // Re-sync with database every time returning to this screen
+            LaunchedEffect(Unit) {
+                profileViewModel.loadUserProfile()
+            }
+
             EmployerProfileRoute(
+                viewModel = profileViewModel,
                 onDashboardClick = {
                     navController.navigate(Screen.Dashboard.route) {
                         popUpTo(Screen.Dashboard.route) { inclusive = true }
@@ -456,10 +469,10 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                     navController.navigate(Screen.PostJob.route)
                 },
                 onEditProfileClick = {
-                    // TODO: navigate to Edit Profile Screen
+                    navController.navigate(Screen.EditEmployerProfile.route)
                 },
                 onChangePasswordClick = {
-                    // TODO: navigate to Update Password Screen
+                    // TODO: navigate to Change Password Screen when implemented
                 },
                 onTermsClick = {
                     // TODO: navigate to Terms & Conditions Screen
@@ -471,6 +484,21 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                     navController.navigate(Screen.Login.route) {
                         popUpTo(0) { inclusive = true }
                     }
+                }
+            )
+        }
+
+        // Edit Employer Profile Screen
+        composable(Screen.EditEmployerProfile.route) {
+            // Distinct ViewModel instance to isolate edits until saved
+            val editViewModel: EmployerProfileViewModel = viewModel(
+                factory = EmployerProfileViewModelFactory(SupabaseClient.client)
+            )
+
+            EditEmployerProfileRoute(
+                viewModel = editViewModel,
+                onBackClick = {
+                    navController.popBackStack()
                 }
             )
         }
