@@ -1,6 +1,7 @@
 package com.example.parttimego.data.repository
 
 import com.example.parttimego.data.SupabaseClient
+import com.example.parttimego.data.model.Worker
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -56,19 +57,24 @@ class ApplicationRepository {
 
             val applicantIds = applications.map { it.applicantId }.distinct()
 
-            val profiles = postgrest["profiles"]
+            val profiles = postgrest["worker"]
                 .select {
-                    filter { isIn("id", applicantIds) }
+                    filter { isIn("user_id", applicantIds) }
                 }
-                .decodeList<ApplicantProfileDto>()
+                .decodeList<Worker>()
 
             val jobsById = jobs.associateBy { it.id }
-            val profilesById = profiles.associateBy { it.id }
+            val workersByUserId = profiles.associateBy { it.userId }
 
             applications.mapNotNull { app ->
                 val job = jobsById[app.jobId] ?: return@mapNotNull null
-                val profile = profilesById[app.applicantId]
-                Triple(app, job, profile)
+                val worker = workersByUserId[app.applicantId]
+
+                val resolvedProfile= ApplicantProfileDto(
+                    id=app.applicantId,
+                    fullName=worker?.workerName
+                )
+                Triple(app,job,resolvedProfile)
             }
         } catch (e: Exception) {
             // Offline/network failure — return empty rather than crashing.

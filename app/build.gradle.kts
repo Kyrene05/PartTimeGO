@@ -72,6 +72,7 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:auth-kt")
     implementation("io.github.jan-tennert.supabase:realtime-kt")
     implementation("io.github.jan-tennert.supabase:storage-kt:<supabase_version>")
+    implementation("io.github.jan-tennert.supabase:storage-kt")
 
     // Ktor Engine (Required by Supabase Kotlin SDK)
     implementation("io.ktor:ktor-client-android:3.0.1")

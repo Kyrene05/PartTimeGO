@@ -37,6 +37,8 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import androidx.compose.ui.platform.LocalContext
 import android.content.Context
+import androidx.compose.material.icons.filled.Lock
+
 data class PostJobFormData(
     val title: String,
     val companyName: String,
@@ -105,6 +107,7 @@ private object PostJobDraftPrefs {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PostJobScreen(
+    companyName: String,
     isSubmitting: Boolean = false,
     errorMessage: String? = null,
     onBackClick: () -> Unit = {},
@@ -252,13 +255,33 @@ fun PostJobScreen(
                     ) { title = it; titleError = null }
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    FormField(
-                        label = "Company Name",
-                        value = companyName,
-                        isError = companyNameError != null,
-                        errorMessage = companyNameError,
-                        modifier = Modifier.trackPosition("companyName", fieldPositions)
-                    ) { companyName = it; companyNameError = null }
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text("Company Name (Locked)", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MutedText)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = companyName.ifBlank { "Set your company name in Profile" },
+                            onValueChange = { },
+                            readOnly = true,
+                            enabled = false,
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = Icons.Filled.Lock,
+                                    contentDescription = "Locked",
+                                    tint = MutedText,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            singleLine = true,
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedBorderColor = Color.Black,
+                                disabledBorderColor = Color.Black,
+                                disabledTextColor = if (companyName.isBlank()) Color.Red else Color.Black,
+                                disabledContainerColor = Color(0xFFF5F5F5)
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text("Category", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MutedText)
@@ -778,7 +801,7 @@ internal fun CategoryChip(label: String, selected: Boolean, onClick: () -> Unit)
 @Composable
 fun PostJobScreenPreview() {
     PartTimeGOTheme {
-        PostJobScreen(isSubmitting = false, errorMessage = null)
+        PostJobScreen(companyName = "AEG Live MY", isSubmitting = false, errorMessage = null)
     }
 }
 
@@ -786,6 +809,6 @@ fun PostJobScreenPreview() {
 @Composable
 fun PostJobScreenSubmittingPreview() {
     PartTimeGOTheme {
-        PostJobScreen(isSubmitting = true, errorMessage = null)
+        PostJobScreen(companyName = "AEG Live MY", isSubmitting = true, errorMessage = null)
     }
 }

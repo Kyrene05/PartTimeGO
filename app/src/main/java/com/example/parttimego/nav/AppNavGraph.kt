@@ -44,6 +44,7 @@ import com.example.parttimego.viewmodel.JobViewModel
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionSource
 import io.github.jan.supabase.auth.status.SessionStatus
+import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -88,7 +89,10 @@ private fun JobEntity.toStatusFilter(): JobStatusFilter {
         else -> JobStatusFilter.ACTIVE
     }
 }
-
+@kotlinx.serialization.Serializable
+private data class CompanyNameDto(
+    @kotlinx.serialization.SerialName("company_name") val companyName: String? = null
+)
 @Composable
 fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel = viewModel()) {
 
@@ -308,8 +312,25 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             val jobViewModel: JobViewModel = viewModel()
             var isSubmitting by remember { mutableStateOf(false) }
             var postError by remember { mutableStateOf<String?>(null) }
+            var companyName by remember { mutableStateOf("") }
+
+            val employerId = SupabaseClient.client.auth.currentUserOrNull()?.id
+
+            LaunchedEffect(employerId) {
+                if (employerId != null) {
+                    try {
+                        val profile = SupabaseClient.client.postgrest["profiles"]
+                            .select { filter { eq("id", employerId) } }
+                            .decodeSingleOrNull<CompanyNameDto>()
+                        companyName = profile?.companyName ?: ""
+                    } catch (e: Exception) {
+                        companyName = ""
+                    }
+                }
+            }
 
             PostJobScreen(
+                companyName = companyName,
                 isSubmitting = isSubmitting,
                 errorMessage = postError,
                 onBackClick = { navController.popBackStack() },
@@ -320,17 +341,17 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                 },
                 onProfileTabClick = { navController.navigate(Screen.EmployerProfile.route) },
                 onPostClick = { formData ->
-                    val employerId = SupabaseClient.client.auth.currentUserOrNull()?.id
-                    if (employerId == null) {
+                    val currentEmployerId = SupabaseClient.client.auth.currentUserOrNull()?.id
+                    if (currentEmployerId == null) {
                         postError = "You must be logged in to post a job."
                         return@PostJobScreen
                     }
 
                     val job = JobEntity(
                         id = UUID.randomUUID().toString(),
-                        employerId = employerId,
+                        employerId = currentEmployerId,
                         title = formData.title,
-                        companyName = formData.companyName.ifBlank { null },
+                        companyName = companyName.ifBlank { null },
                         category = formData.category,
                         salary = formData.salary.toDoubleOrNull() ?: 0.0,
                         salaryPeriod = "day",
