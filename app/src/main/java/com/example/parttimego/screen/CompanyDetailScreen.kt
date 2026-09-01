@@ -83,7 +83,6 @@ fun CompanyDetailScreen(
     onBackClick: () -> Unit = {},
     onJobClick: (String) -> Unit = {}
 ) {
-    // 设置手机系统通知栏（Status Bar）颜色为深蓝色 DarkNavy
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
