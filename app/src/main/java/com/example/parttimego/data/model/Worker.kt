@@ -20,6 +20,9 @@ data class Worker(
     @SerialName("worker_availability")
     val workerAvailability: Boolean,
 
+    @SerialName("worker_availabilityDay")
+    val workerAvailabilityDay: String,
+
     @SerialName("worker_preferredJobCategories")
     val workerPreferredJobCategories: String,
 
