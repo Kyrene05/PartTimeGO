@@ -1,5 +1,9 @@
 package com.example.parttimego.screen
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,36 +16,36 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.WorkHistory
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,116 +63,46 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.example.parttimego.data.SupabaseClient
 import com.example.parttimego.ui.theme.DarkNavy
 import com.example.parttimego.ui.theme.MutedText
 import com.example.parttimego.ui.theme.PartTimeGOTheme
 import com.example.parttimego.ui.theme.SoftGrey
-import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.postgrest.from
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import com.example.parttimego.viewmodel.WorkerUiState
+import com.example.parttimego.viewmodel.WorkerViewModel
 
-// UI State
-data class JobSeekerSettingUiState(
-    val fullName: String = "",
-    val phone: String = "",
-    val email: String = "",
-    val avatarUrl: String? = null,
-    val isLoading: Boolean = true
+data class SettingMenuItem(
+    val title: String,
+    val icon: ImageVector,
+    val onClick: () -> Unit,
+    val isLogout: Boolean = false
 )
 
-@Serializable
-private data class ProfileDto(
-    val id: String,
-    @SerialName("full_name") val fullName: String? = null,
-    val phone: String? = null,
-    val email: String? = null,
-    @SerialName("avatar_url") val avatarUrl: String? = null
-)
-
-// ViewModel
-class JobSeekerSettingViewModel : ViewModel() {
-
-    private val _uiState = MutableStateFlow(JobSeekerSettingUiState())
-    val uiState: StateFlow<JobSeekerSettingUiState> = _uiState.asStateFlow()
-
-    init {
-        loadUserProfile()
+private fun openWhatsAppSupport(
+    context: Context,
+    phoneNumber: String = "601139539985",
+    message: String = "Hi, I need support regarding my account."
+) {
+    var cleanNumber = phoneNumber.replace(Regex("[^0-9]"), "")
+    if (cleanNumber.startsWith("0")) {
+        cleanNumber = "60" + cleanNumber.substring(1)
     }
 
-    fun loadUserProfile() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            try {
-                val currentUser = SupabaseClient.client.auth.currentUserOrNull()
-                if (currentUser != null) {
-                    val userId = currentUser.id
-                    val authEmail = currentUser.email ?: ""
+    val url = "https://api.whatsapp.com/send?phone=$cleanNumber&text=${Uri.encode(message)}"
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
 
-                    val profile = SupabaseClient.client.from("profiles")
-                        .select {
-                            filter {
-                                eq("id", userId)
-                            }
-                        }
-                        .decodeSingleOrNull<ProfileDto>()
-
-                    _uiState.update {
-                        it.copy(
-                            fullName = profile?.fullName ?: "",
-                            phone = profile?.phone ?: "",
-                            email = profile?.email ?: authEmail,
-                            avatarUrl = profile?.avatarUrl,
-                            isLoading = false
-                        )
-                    }
-                } else {
-                    _uiState.update { it.copy(isLoading = false) }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _uiState.update { it.copy(isLoading = false) }
-            }
-        }
+    try {
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        Toast.makeText(context, "Unable to open WhatsApp", Toast.LENGTH_SHORT).show()
     }
-
-    fun logout(onLogoutSuccess: () -> Unit) {
-        viewModelScope.launch {
-            try {
-                SupabaseClient.client.auth.signOut()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                onLogoutSuccess()
-            }
-        }
-    }
-}
-
-// Enums
-enum class JobSeekerBottomTab(val label: String, val icon: ImageVector) {
-    HOME("Home", Icons.Default.Home),
-    APPLICATIONS("My Jobs", Icons.Default.WorkHistory),
-    SAVED("Saved", Icons.Default.Bookmark),
-    PROFILE("Profile", Icons.Default.Person)
 }
 
 @Composable
-fun JobSeekerSettingRoute(
-    viewModel: JobSeekerSettingViewModel = viewModel(),
-    onHomeClick: () -> Unit = {},
-    onApplicationsClick: () -> Unit = {},
-    onSavedClick: () -> Unit = {},
+fun WorkerSettingRoute(
+    viewModel: WorkerViewModel = viewModel(),
+    onBackClick: () -> Unit = {},
     onEditProfileClick: () -> Unit = {},
     onChangePasswordClick: () -> Unit = {},
     onTermsClick: () -> Unit = {},
@@ -178,25 +112,17 @@ fun JobSeekerSettingRoute(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    JobSeekerSettingScreen(
+    LaunchedEffect(Unit) {
+        viewModel.loadUserProfile()
+    }
+
+    WorkerSettingScreen(
         uiState = uiState,
-        selectedTab = JobSeekerBottomTab.PROFILE,
-        onTabSelected = { tab ->
-            when (tab) {
-                JobSeekerBottomTab.HOME -> onHomeClick()
-                JobSeekerBottomTab.APPLICATIONS -> onApplicationsClick()
-                JobSeekerBottomTab.SAVED -> onSavedClick()
-                JobSeekerBottomTab.PROFILE -> { }
-            }
-        },
+        onBackClick = onBackClick,
         onEditProfileClick = onEditProfileClick,
         onChangePasswordClick = onChangePasswordClick,
         onContactUsClick = {
-            openWhatsApp(
-                context = context,
-                phoneNumber = "601139539985",
-                message = "Hi, I need support regarding my job seeker account."
-            )
+            openWhatsAppSupport(context = context)
         },
         onTermsClick = onTermsClick,
         onMoreOptionsClick = onMoreOptionsClick,
@@ -206,11 +132,11 @@ fun JobSeekerSettingRoute(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun JobSeekerSettingScreen(
-    uiState: JobSeekerSettingUiState,
-    selectedTab: JobSeekerBottomTab = JobSeekerBottomTab.PROFILE,
-    onTabSelected: (JobSeekerBottomTab) -> Unit = {},
+fun WorkerSettingScreen(
+    uiState: WorkerUiState,
+    onBackClick: () -> Unit = {},
     onEditProfileClick: () -> Unit = {},
     onChangePasswordClick: () -> Unit = {},
     onContactUsClick: () -> Unit = {},
@@ -231,20 +157,47 @@ fun JobSeekerSettingScreen(
         onMoreOptionsClick
     ) {
         listOf(
-            ProfileMenuItem("Edit Profile", Icons.Default.Edit, onEditProfileClick),
-            ProfileMenuItem("Change Password", Icons.Default.Lock, onChangePasswordClick),
-            ProfileMenuItem("Contact Us", Icons.Default.Phone, onContactUsClick),
-            ProfileMenuItem("Terms and Conditions", Icons.Default.Description, onTermsClick),
-            ProfileMenuItem("More Options", Icons.Default.MoreHoriz, onMoreOptionsClick),
-            ProfileMenuItem("Logout", Icons.Default.ExitToApp, { showLogoutDialog = true }, isLogout = true)
+            SettingMenuItem("Edit Profile", Icons.Default.Edit, onEditProfileClick),
+            SettingMenuItem("Change Password", Icons.Default.Lock, onChangePasswordClick),
+            SettingMenuItem("Contact Us", Icons.Default.Phone, onContactUsClick),
+            SettingMenuItem("Terms and Conditions", Icons.Default.Description, onTermsClick),
+            SettingMenuItem("More Options", Icons.Default.MoreHoriz, onMoreOptionsClick),
+            SettingMenuItem("Logout", Icons.Default.ExitToApp, { showLogoutDialog = true }, isLogout = true)
         )
     }
 
+    val displayName = remember(uiState.userName, uiState.email) {
+        when {
+            uiState.userName.isNotBlank() -> uiState.userName
+            uiState.email.isNotBlank() -> uiState.email.substringBefore("@")
+            else -> "User"
+        }
+    }
+
     Scaffold(
-        bottomBar = {
-            JobSeekerBottomNavigationBar(
-                selectedTab = selectedTab,
-                onTabSelected = onTabSelected
+        containerColor = DarkNavy,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Settings",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent
+                )
             )
         }
     ) { paddingValues ->
@@ -253,19 +206,18 @@ fun JobSeekerSettingScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .background(DarkNavy)
-                .statusBarsPadding()
         ) {
             // Header Profile Section
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 32.dp)
+                    .padding(horizontal = 20.dp, vertical = 36.dp)
             ) {
                 if (uiState.isLoading) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(76.dp),
+                            .height(84.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(color = Color.White)
@@ -275,74 +227,113 @@ fun JobSeekerSettingScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
                     ) {
+                        // Avatar
                         Box(
                             modifier = Modifier
-                                .size(76.dp)
+                                .size(84.dp)
                                 .clip(CircleShape)
-                                .background(SoftGrey),
-                            contentAlignment = Alignment.Center
+                                .background(Color.White.copy(alpha = 0.2f))
+                                .padding(3.dp)
                         ) {
-                            if (!uiState.avatarUrl.isNullOrBlank()) {
-                                AsyncImage(
-                                    model = uiState.avatarUrl,
-                                    contentDescription = "User Avatar",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = "Default Avatar",
-                                    tint = DarkNavy,
-                                    modifier = Modifier.size(40.dp)
-                                )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .background(SoftGrey),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (!uiState.avatarUrl.isNullOrBlank()) {
+                                    AsyncImage(
+                                        model = uiState.avatarUrl,
+                                        contentDescription = "User Avatar",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = "Default Avatar",
+                                        tint = DarkNavy,
+                                        modifier = Modifier.size(42.dp)
+                                    )
+                                }
                             }
                         }
 
                         Spacer(modifier = Modifier.width(18.dp))
 
+                        // Name, Phone & Email Area
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = uiState.fullName.ifBlank { "User" },
+                                text = displayName,
                                 color = Color.White,
-                                fontSize = 20.sp,
+                                fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            // Phone Row
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clickable(enabled = uiState.phone.isBlank()) { onEditProfileClick() }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Phone,
+                                    contentDescription = null,
+                                    tint = if (uiState.phone.isNotBlank()) Color.White.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (uiState.phone.isNotBlank()) uiState.phone else "+ Add Phone",
+                                    color = if (uiState.phone.isNotBlank()) Color.White.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.6f),
+                                    fontSize = 13.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = uiState.phone.ifBlank { "No phone number added" },
-                                color = Color.White.copy(alpha = 0.8f),
-                                fontSize = 14.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = uiState.email.ifBlank { "No email added" },
-                                color = Color.White.copy(alpha = 0.8f),
-                                fontSize = 14.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+
+                            // Email Row
+                            if (uiState.email.isNotBlank()) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Email,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = uiState.email,
+                                        color = Color.White.copy(alpha = 0.8f),
+                                        fontSize = 12.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            // Main Menu List
+            // Options List Surface
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                 color = Color.White
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(start = 20.dp, end = 20.dp, top = 40.dp, bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     menuItems.forEachIndexed { index, item ->
                         Surface(
@@ -393,43 +384,14 @@ fun JobSeekerSettingScreen(
 }
 
 @Composable
-fun JobSeekerBottomNavigationBar(
-    selectedTab: JobSeekerBottomTab,
-    onTabSelected: (JobSeekerBottomTab) -> Unit
-) {
-    NavigationBar(containerColor = Color.White) {
-        JobSeekerBottomTab.entries.forEach { tab ->
-            val isSelected = selectedTab == tab
-            NavigationBarItem(
-                selected = isSelected,
-                onClick = { onTabSelected(tab) },
-                icon = {
-                    Icon(
-                        imageVector = tab.icon,
-                        contentDescription = tab.label
-                    )
-                },
-                label = { Text(tab.label) },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = DarkNavy,
-                    selectedTextColor = DarkNavy,
-                    unselectedIconColor = MutedText,
-                    unselectedTextColor = MutedText
-                )
-            )
-        }
-    }
-}
-
-@Composable
-private fun SettingMenuItemRow(item: ProfileMenuItem) {
+private fun SettingMenuItemRow(item: SettingMenuItem) {
     val textColor = if (item.isLogout) Color(0xFFDC2626) else Color.Black
     val iconTint = if (item.isLogout) Color(0xFFDC2626) else DarkNavy
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -438,12 +400,12 @@ private fun SettingMenuItemRow(item: ProfileMenuItem) {
                 imageVector = item.icon,
                 contentDescription = item.title,
                 tint = iconTint,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(22.dp)
             )
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(14.dp))
             Text(
                 text = item.title,
-                fontSize = 16.sp,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
                 color = textColor
             )
@@ -454,7 +416,7 @@ private fun SettingMenuItemRow(item: ProfileMenuItem) {
                 imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                 contentDescription = "Navigate",
                 tint = MutedText,
-                modifier = Modifier.size(14.dp)
+                modifier = Modifier.size(13.dp)
             )
         }
     }
@@ -462,10 +424,15 @@ private fun SettingMenuItemRow(item: ProfileMenuItem) {
 
 @Preview(showBackground = true)
 @Composable
-fun JobSeekerSettingScreenPreview() {
+fun WorkerSettingScreenPreview() {
     PartTimeGOTheme {
-        JobSeekerSettingScreen(
-            uiState = JobSeekerSettingUiState(isLoading = false)
+        WorkerSettingScreen(
+            uiState = WorkerUiState(
+                userName = "Alex Tan",
+                phone = "+60123456789",
+                email = "alex.tan@example.com",
+                isLoading = false
+            )
         )
     }
 }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,6 +30,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -60,12 +63,12 @@ import coil.compose.AsyncImage
 import com.example.parttimego.ui.theme.DarkNavy
 import com.example.parttimego.ui.theme.PartTimeGOTheme
 import com.example.parttimego.ui.theme.SoftGrey
-import com.example.parttimego.viewmodel.EmployerProfileUiState
-import com.example.parttimego.viewmodel.EmployerProfileViewModel
+import com.example.parttimego.viewmodel.WorkerUiState
+import com.example.parttimego.viewmodel.WorkerViewModel
 
 @Composable
-fun EditEmployerProfileRoute(
-    viewModel: EmployerProfileViewModel = viewModel(),
+fun EditWorkerProfileRoute(
+    viewModel: WorkerViewModel = viewModel(),
     onBackClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -86,28 +89,28 @@ fun EditEmployerProfileRoute(
         }
     }
 
-    EditEmployerProfileScreen(
+    EditWorkerProfileScreen(
         uiState = uiState,
         onBackClick = onBackClick,
         onImageSelected = { uri -> viewModel.onAvatarSelected(uri) },
         onUserNameChange = { viewModel.onUserNameChange(it) },
-        onCompanyNameChange = { viewModel.onCompanyNameChange(it) },
+        onGenderSelected = { viewModel.onGenderSelected(it) },
         onPhoneChange = { viewModel.onPhoneChange(it) },
-        onBackgroundChange = { viewModel.onCompanyBackgroundChange(it) },
+        onAboutMeChange = { viewModel.onAboutMeChange(it) },
         onSaveClick = { viewModel.saveProfile(context) }
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditEmployerProfileScreen(
-    uiState: EmployerProfileUiState,
+fun EditWorkerProfileScreen(
+    uiState: WorkerUiState,
     onBackClick: () -> Unit = {},
     onImageSelected: (Uri) -> Unit = {},
     onUserNameChange: (String) -> Unit = {},
-    onCompanyNameChange: (String) -> Unit = {},
+    onGenderSelected: (String) -> Unit = {},
     onPhoneChange: (String) -> Unit = {},
-    onBackgroundChange: (String) -> Unit = {},
+    onAboutMeChange: (String) -> Unit = {},
     onSaveClick: () -> Unit = {}
 ) {
 
@@ -117,16 +120,23 @@ fun EditEmployerProfileScreen(
         uri?.let { onImageSelected(it) }
     }
 
-    val wordCount = remember(uiState.companyBackground) {
-        if (uiState.companyBackground.isBlank()) 0
-        else uiState.companyBackground.trim().split("\\s+".toRegex()).size
+    val wordCount = remember(uiState.aboutMe) {
+        if (uiState.aboutMe.isBlank()) 0
+        else uiState.aboutMe.trim().split("\\s+".toRegex()).size
     }
 
     val phoneDigits = uiState.phone.removePrefix("+60").removePrefix("60").filter { it.isDigit() }
     val isPhoneTooShort = phoneDigits.isNotEmpty() && phoneDigits.length < 8
 
+    // 验证必填字段：名字不为空、电话号码不为空且不少于8位、性别已选择
+    val isFormValid = uiState.userName.isNotBlank() &&
+            phoneDigits.isNotBlank() &&
+            !isPhoneTooShort &&
+            uiState.gender.isNotBlank()
+
+    val genderOptions = listOf("Male", "Female", "Prefer not to say")
+
     Scaffold(
-        containerColor = DarkNavy, // 确保底层包含状态栏在内全为深蓝色
         topBar = {
             TopAppBar(
                 title = {
@@ -146,9 +156,7 @@ fun EditEmployerProfileScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent // 设为透明，完美融入底层背景
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkNavy)
             )
         }
     ) { paddingValues ->
@@ -158,6 +166,7 @@ fun EditEmployerProfileScreen(
                 .padding(paddingValues)
                 .background(DarkNavy)
         ) {
+            // Header Avatar Section
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -194,7 +203,7 @@ fun EditEmployerProfileScreen(
                             } else if (!uiState.avatarUrl.isNullOrBlank()) {
                                 AsyncImage(
                                     model = uiState.avatarUrl,
-                                    contentDescription = "Employer Avatar",
+                                    contentDescription = "Worker Avatar",
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
                                 )
@@ -234,6 +243,7 @@ fun EditEmployerProfileScreen(
                 )
             }
 
+            // Form Content Surface
             Surface(
                 modifier = Modifier.fillMaxSize(),
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
@@ -246,28 +256,54 @@ fun EditEmployerProfileScreen(
                         .padding(start = 24.dp, end = 24.dp, top = 28.dp, bottom = 28.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    // Full Name (Required)
                     OutlinedTextField(
                         value = uiState.userName,
                         onValueChange = onUserNameChange,
-                        label = { Text("Full Name") },
+                        label = { Text("Full Name *") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     )
 
-                    // Company Name 输入框（带必填提示）
+                    // Gender Selection (Required)
                     Column {
-                        OutlinedTextField(
-                            value = uiState.companyName,
-                            onValueChange = onCompanyNameChange,
-                            label = { Text("Company Name *") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                        Text(
+                            text = "Gender *",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
                         )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            genderOptions.forEach { option ->
+                                val isSelected = uiState.gender.equals(option, ignoreCase = true)
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = { onGenderSelected(option) },
+                                    label = {
+                                        Text(
+                                            text = option,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = DarkNavy,
+                                        selectedLabelColor = Color.White,
+                                        containerColor = Color(0xFFF1F5F9),
+                                        labelColor = Color.DarkGray
+                                    ),
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                            }
+                        }
                     }
 
-                    // Phone Number 输入框（带必填及位数提示）
+                    // Phone Number (Required)
                     Column {
                         OutlinedTextField(
                             value = phoneDigits,
@@ -301,8 +337,9 @@ fun EditEmployerProfileScreen(
                         }
                     }
 
+                    // Email Address (Locked)
                     OutlinedTextField(
-                        value = uiState.companyEmail,
+                        value = uiState.email,
                         onValueChange = {},
                         enabled = false,
                         readOnly = true,
@@ -325,18 +362,18 @@ fun EditEmployerProfileScreen(
                         shape = RoundedCornerShape(12.dp)
                     )
 
-                    // Company Background 字段
+                    // About Me (Self Introduction)
                     Column {
                         OutlinedTextField(
-                            value = uiState.companyBackground,
+                            value = uiState.aboutMe,
                             onValueChange = { input ->
                                 val words = input.trim().split("\\s+".toRegex()).filter { it.isNotEmpty() }
-                                if (words.size <= 300 || input.length < uiState.companyBackground.length) {
-                                    onBackgroundChange(input)
+                                if (words.size <= 300 || input.length < uiState.aboutMe.length) {
+                                    onAboutMeChange(input)
                                 }
                             },
-                            label = { Text("Company Background") },
-                            placeholder = { Text("Write your company background here...") },
+                            label = { Text("About Me (Self Introduction)") },
+                            placeholder = { Text("Write a short intro about your skills, experience, or availability...") },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(130.dp),
@@ -357,12 +394,15 @@ fun EditEmployerProfileScreen(
                     // Save Button
                     Button(
                         onClick = onSaveClick,
-                        enabled = !uiState.isSaving,
+                        enabled = isFormValid && !uiState.isSaving,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = DarkNavy)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = DarkNavy,
+                            disabledContainerColor = Color(0xFF94A3B8)
+                        )
                     ) {
                         if (uiState.isSaving) {
                             CircularProgressIndicator(
@@ -386,15 +426,15 @@ fun EditEmployerProfileScreen(
 
 @Preview(showBackground = true)
 @Composable
-fun EditEmployerProfileScreenPreview() {
+fun EditWorkerProfileScreenPreview() {
     PartTimeGOTheme {
-        EditEmployerProfileScreen(
-            uiState = EmployerProfileUiState(
-                userName = "Alex",
-                companyName = "Tech Solutions Inc.",
+        EditWorkerProfileScreen(
+            uiState = WorkerUiState(
+                userName = "Alex Tan",
+                gender = "Male",
                 phone = "123456789",
-                companyEmail = "alex@techsolutions.com",
-                companyBackground = "We provide full-stack IT solutions and software engineering services for small to medium enterprises.",
+                email = "alex.tan@example.com",
+                aboutMe = "Hardworking Computer Science student seeking flexible part-time jobs in event coordination or IT support.",
                 isSaving = false
             )
         )

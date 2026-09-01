@@ -1,4 +1,4 @@
-package com.example.parttimego.nav
+/*package com.example.parttimego.nav
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Row
@@ -81,4 +81,4 @@ fun WorkerNavBar(
 }
 
 @Composable
-private
+private*/
