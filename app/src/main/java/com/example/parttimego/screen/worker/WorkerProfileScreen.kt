@@ -24,7 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -44,6 +44,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.parttimego.data.model.Worker
+import com.example.parttimego.nav.WorkerNavBar
+import com.example.parttimego.nav.WorkerNavItem
 import com.example.parttimego.ui.theme.DarkText
 import com.example.parttimego.ui.theme.PartTimeGOTheme
 
@@ -99,9 +101,16 @@ fun WorkerProfileScreen(
                     item {
                         AvailabilityCard(
                             available = isAvailable,
+                            availableDays = worker.workerAvailabilityDay
+                                .split(",")
+                                .map { it.trim() }
+                                .filter { it.isNotEmpty() },
                             onAvailabilityChange = { value ->
                                 isAvailable = value
                                 onAvailabilityChange(value)
+                            },
+                            onAvailableDaysChange = {
+                                // Later, this can be sent to WorkerViewModel
                             }
                         )
                     }
@@ -159,6 +168,21 @@ fun WorkerProfileScreen(
                     }
                 }
             }
+            WorkerNavBar(
+                selectedItem = WorkerNavItem.PROFILE,
+                onHomeClick = {
+                    // Navigation to WorkerHomeScreen
+                },
+                onExploreClick = {
+                    // Navigation to WorkerExploreScreen
+                },
+                onAppliedClick = {
+                    // Navigation to WorkerAppliedScreen
+                },
+                onProfileClick = {
+                    // Already on Profile screen
+                }
+            )
         }
     }
 }
@@ -204,7 +228,7 @@ private fun WorkerProfileHeader(
                 ) {
 
                     Icon(
-                        imageVector = Icons.Default.Edit,
+                        imageVector = Icons.Default.Settings,
                         contentDescription = "Edit Profile",
                         tint = Color.White,
                         modifier = Modifier.size(9.dp)
@@ -287,8 +311,24 @@ private fun WorkerProfileHeader(
 @Composable
 private fun AvailabilityCard(
     available: Boolean,
-    onAvailabilityChange: (Boolean) -> Unit
+    availableDays: List<String>,
+    onAvailabilityChange: (Boolean) -> Unit,
+    onAvailableDaysChange: (List<String>) -> Unit
 ) {
+    var selectedDays by remember {
+        mutableStateOf(availableDays)
+    }
+
+    val days = listOf(
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+    )
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -300,8 +340,7 @@ private fun AvailabilityCard(
     ) {
 
         Row(
-            modifier = Modifier.padding(12.dp, 10.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.padding(12.dp, 10.dp)
         ) {
 
             Box(
@@ -326,7 +365,11 @@ private fun AvailabilityCard(
                 Modifier.weight(1f)
             ) {
                 Text(
-                    text = "Available",
+                    text = if (available) {
+                        "Available Everyday"
+                    } else {
+                        getAvailabilityText(selectedDays)
+                    },
                     color = Color.Black,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
@@ -335,7 +378,16 @@ private fun AvailabilityCard(
 
             Switch(
                 checked = available,
-                onCheckedChange = onAvailabilityChange,
+                onCheckedChange = { value ->
+
+                    onAvailabilityChange(value)
+
+                    // If user turns ON, they are available every day
+                    if (value) {
+                        selectedDays = emptyList()
+                        onAvailableDaysChange(emptyList())
+                    }
+                },
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
                     checkedTrackColor = Color(0xFF118C20),
@@ -344,8 +396,49 @@ private fun AvailabilityCard(
                 )
             )
         }
+
+        // Only show day selection when toggle is OFF
+        if (!available){
+            Spacer(Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ){
+                days.forEach { day ->
+                    val shortDay = when (day) {
+                        "Monday" -> "M"
+                        "Tuesday" -> "T"
+                        "Wednesday" -> "W"
+                        "Thursday" -> "T"
+                        "Friday" -> "F"
+                        "Saturday" -> "S"
+                        else -> "S"
+                    }
+                    DayButton(
+                        day = shortDay,
+                        selected = day in selectedDays,
+                        onClick = {
+
+                            selectedDays =
+                                if (day in selectedDays) {
+                                    selectedDays - day
+                                } else {
+                                    selectedDays + day
+                                }
+
+                            onAvailableDaysChange(
+                                selectedDays
+                            )
+                        }
+                    )
+                }
+            }
+        }
     }
 }
+
+
 
 @Composable
 private fun ProfileSectionTitle(
@@ -691,6 +784,62 @@ private fun GigExperienceCard(
     }
 }
 
+@Composable
+fun DayButton(
+    day: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .size(26.dp)
+            .clickable {
+                onClick()
+            },
+        shape = CircleShape,
+        color = if (selected) {
+            Color(0xFF262075)
+        } else {
+            Color.White
+        },
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (selected) {
+                Color(0xFF262075)
+            } else {
+                Color(0xFFD0D0CC)
+            }
+        )
+    ) {
+
+        Box(
+            contentAlignment = Alignment.Center
+        ) {
+
+            Text(
+                text = day,
+                color = if (selected) {
+                    Color.White
+                } else {
+                    Color.Black
+                },
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun getAvailabilityText(
+    selectedDays: List<String>
+): String {
+    if(selectedDays.isEmpty()){
+        return "Select available days"
+    }
+    return "Every" + selectedDays.joinToString(", ")
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun WorkerProfileScreenPreview(){
@@ -701,7 +850,9 @@ private fun WorkerProfileScreenPreview(){
                 userId = "U001",
                 workerName = "Ahmad",
                 workerPhoneNo = "0123456789",
+                workerEmail = "ahmad@gmail.com",
                 workerAvailability = true,
+                workerAvailabilityDay = "Friday",
                 workerSkills = "Event Crew, Customer Service",
                 workerPreferredJobCategories = "F&B, Retail",
                 workerPreferredState = "Penang",
