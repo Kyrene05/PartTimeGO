@@ -13,34 +13,33 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-data class EmployerProfileUiState(
-    val companyName: String = "",
-    val companyPhone: String = "",
-    val companyEmail: String = "",
+data class JobSeekerSettingUiState(
+    val fullName: String = "",
+    val phone: String = "",
+    val email: String = "",
     val avatarUrl: String? = null,
     val isLoading: Boolean = true
 )
 
 @Serializable
-private data class EmployerProfileDto(
+private data class ProfileDto(
     val id: String,
-    @SerialName("company_name") val companyName: String? = null,
     @SerialName("full_name") val fullName: String? = null,
     val phone: String? = null,
     val email: String? = null,
     @SerialName("avatar_url") val avatarUrl: String? = null
 )
 
-class EmployerProfileViewModel : ViewModel() {
+class JobSeekerSettingViewModel : ViewModel() {
 
-    private val _uiState = MutableStateFlow(EmployerProfileUiState())
-    val uiState: StateFlow<EmployerProfileUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(JobSeekerSettingUiState())
+    val uiState: StateFlow<JobSeekerSettingUiState> = _uiState.asStateFlow()
 
     init {
-        loadEmployerProfile()
+        loadUserProfile()
     }
 
-    fun loadEmployerProfile() {
+    fun loadUserProfile() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
@@ -49,19 +48,20 @@ class EmployerProfileViewModel : ViewModel() {
                     val userId = currentUser.id
                     val authEmail = currentUser.email ?: ""
 
+                    // 从 Supabase profiles 表查询当前用户的数据
                     val profile = SupabaseClient.client.from("profiles")
                         .select {
                             filter {
                                 eq("id", userId)
                             }
                         }
-                        .decodeSingleOrNull<EmployerProfileDto>()
+                        .decodeSingleOrNull<ProfileDto>()
 
                     _uiState.update {
                         it.copy(
-                            companyName = profile?.companyName ?: profile?.fullName ?: "",
-                            companyPhone = profile?.phone ?: "",
-                            companyEmail = profile?.email ?: authEmail,
+                            fullName = profile?.fullName ?: "",
+                            phone = profile?.phone ?: "",
+                            email = profile?.email ?: authEmail,
                             avatarUrl = profile?.avatarUrl,
                             isLoading = false
                         )

@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -62,21 +63,109 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.example.parttimego.data.SupabaseClient
 import com.example.parttimego.ui.theme.DarkNavy
 import com.example.parttimego.ui.theme.MutedText
 import com.example.parttimego.ui.theme.PartTimeGOTheme
 import com.example.parttimego.ui.theme.SoftGrey
-import com.example.parttimego.viewmodel.EmployerProfileViewModel
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.postgrest.from
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-// Models
+// UI State
 data class EmployerProfileUiState(
-    val companyName: String = "TechCorp Solutions Ltd.",
-    val companyPhone: String = "+60 12-345 6789",
-    val companyEmail: String = "hr@techcorp.com",
-    val avatarUrl: String? = null
+    val companyName: String = "",
+    val companyPhone: String = "",
+    val companyEmail: String = "",
+    val avatarUrl: String? = null,
+    val isLoading: Boolean = true
 )
+
+@Serializable
+private data class EmployerProfileDto(
+    val id: String,
+    @SerialName("company_name") val companyName: String? = null,
+    @SerialName("full_name") val fullName: String? = null,
+    val phone: String? = null,
+    val email: String? = null,
+    @SerialName("avatar_url") val avatarUrl: String? = null
+)
+
+// ViewModel
+class EmployerProfileViewModel : ViewModel() {
+
+    private val _uiState = MutableStateFlow(EmployerProfileUiState())
+    val uiState: StateFlow<EmployerProfileUiState> = _uiState.asStateFlow()
+
+    init {
+        loadEmployerProfile()
+    }
+
+    fun loadEmployerProfile() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                val currentUser = SupabaseClient.client.auth.currentUserOrNull()
+                if (currentUser != null) {
+                    val userId = currentUser.id
+                    val authEmail = currentUser.email ?: ""
+
+                    val profile = SupabaseClient.client.from("profiles")
+                        .select {
+                            filter {
+                                eq("id", userId)
+                            }
+                        }
+                        .decodeSingleOrNull<EmployerProfileDto>()
+
+                    _uiState.update {
+                        it.copy(
+                            companyName = profile?.companyName ?: profile?.fullName ?: "",
+                            companyPhone = profile?.phone ?: "",
+                            companyEmail = profile?.email ?: authEmail,
+                            avatarUrl = profile?.avatarUrl,
+                            isLoading = false
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(isLoading = false) }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _uiState.update { it.copy(isLoading = false) }
+            }
+        }
+    }
+
+    fun logout(onLogoutSuccess: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                SupabaseClient.client.auth.signOut()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                onLogoutSuccess()
+            }
+        }
+    }
+}
+
+// Enums & Models
+enum class EmployerBottomTab(val label: String, val icon: ImageVector) {
+    DASHBOARD("Dashboard", Icons.Default.BarChart),
+    POST("Post", Icons.Default.Add),
+    PROFILE("Profile", Icons.Default.Person)
+}
 
 data class ProfileMenuItem(
     val title: String,
@@ -85,16 +174,10 @@ data class ProfileMenuItem(
     val isLogout: Boolean = false
 )
 
-enum class EmployerBottomTab(val label: String, val icon: ImageVector) {
-    DASHBOARD("Dashboard", Icons.Default.BarChart),
-    POST("Post", Icons.Default.Add),
-    PROFILE("Profile", Icons.Default.Person)
-}
-
 fun openWhatsApp(
     context: Context,
     phoneNumber: String = "601139539985",
-    message: String = "Hi, I need support regarding my employer account."
+    message: String = "Hi, I need support regarding my account."
 ) {
     var cleanNumber = phoneNumber.replace(Regex("[^0-9]"), "")
     if (cleanNumber.startsWith("0")) {
@@ -138,7 +221,7 @@ fun EmployerProfileRoute(
         onEditProfileClick = onEditProfileClick,
         onChangePasswordClick = onChangePasswordClick,
         onContactUsClick = {
-            openWhatsApp(context = context, phoneNumber = "601139539985")
+            openWhatsApp(context = context, phoneNumber = "601139539985", message = "Hi, I need support regarding my employer account.")
         },
         onTermsClick = onTermsClick,
         onMoreOptionsClick = onMoreOptionsClick,
@@ -203,61 +286,72 @@ fun EmployerProfileScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 32.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                if (uiState.isLoading) {
                     Box(
                         modifier = Modifier
-                            .size(76.dp)
-                            .clip(CircleShape)
-                            .background(SoftGrey),
+                            .fillMaxWidth()
+                            .height(76.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (!uiState.avatarUrl.isNullOrBlank()) {
-                            AsyncImage(
-                                model = uiState.avatarUrl,
-                                contentDescription = "Company Avatar",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
+                        CircularProgressIndicator(color = Color.White)
+                    }
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(76.dp)
+                                .clip(CircleShape)
+                                .background(SoftGrey),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (!uiState.avatarUrl.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = uiState.avatarUrl,
+                                    contentDescription = "Company Avatar",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Business,
+                                    contentDescription = "Default Avatar",
+                                    tint = DarkNavy,
+                                    modifier = Modifier.size(40.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(18.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = uiState.companyName.ifBlank { "Company Name" },
+                                color = Color.White,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Business,
-                                contentDescription = "Default Avatar",
-                                tint = DarkNavy,
-                                modifier = Modifier.size(40.dp)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = uiState.companyPhone.ifBlank { "No phone number added" },
+                                color = Color.White.copy(alpha = 0.8f),
+                                fontSize = 14.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = uiState.companyEmail.ifBlank { "No email added" },
+                                color = Color.White.copy(alpha = 0.8f),
+                                fontSize = 14.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
-                    }
-
-                    Spacer(modifier = Modifier.width(18.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = uiState.companyName,
-                            color = Color.White,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = uiState.companyPhone,
-                            color = Color.White.copy(alpha = 0.8f),
-                            fontSize = 14.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = uiState.companyEmail,
-                            color = Color.White.copy(alpha = 0.8f),
-                            fontSize = 14.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
                     }
                 }
             }
@@ -396,7 +490,7 @@ private fun ProfileMenuItemRow(item: ProfileMenuItem) {
 fun EmployerProfileScreenPreview() {
     PartTimeGOTheme {
         EmployerProfileScreen(
-            uiState = EmployerProfileUiState()
+            uiState = EmployerProfileUiState(isLoading = false)
         )
     }
 }
