@@ -2,12 +2,14 @@ package com.example.parttimego.nav
 
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -22,6 +24,7 @@ import com.example.parttimego.screen.ApplicantStatus
 import com.example.parttimego.screen.ApplicantUiModel
 import com.example.parttimego.screen.DashboardScreen
 import com.example.parttimego.screen.DetailsScreen
+import com.example.parttimego.screen.EmployerProfileRoute
 import com.example.parttimego.screen.ForgotPasswordScreen
 import com.example.parttimego.screen.LoginScreen
 import com.example.parttimego.screen.ManageApplicantsScreen
@@ -38,12 +41,13 @@ import io.github.jan.supabase.auth.status.SessionSource
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flowOf
 import java.util.UUID
 import java.time.Instant
 import com.example.parttimego.data.repository.ApplicationRepository
 import androidx.compose.runtime.rememberCoroutineScope
 import com.example.parttimego.screen.JobStatusFilter
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
 import java.time.LocalDate
@@ -59,7 +63,8 @@ sealed class Screen(val route: String) {
     object UpdatePassword : Screen("update_password")
     object Dashboard : Screen("dashboard")
     object PostJob : Screen("post_job")
-    object JobSeekerHome: Screen("job_seeker_home")//TODO: change to job seeker homepage
+    object JobSeekerHome : Screen("job_seeker_home") // TODO: change to job seeker homepage
+    object EmployerProfile : Screen("employer_profile")
 
     object Details : Screen("details/{jobId}") {
         fun createRoute(jobId: String) = "details/$jobId"
@@ -195,7 +200,7 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                 onLoginClick = {
                     authViewModel.resetState()
                     navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
+                        popUpTo(Screen.Register.route) { inclusive = true }
                     }
                 }
             )
@@ -277,7 +282,7 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                 onTotalApplicantsClick = { navController.navigate(Screen.ManageApplicants.route) },
                 onDashboardTabClick = { },
                 onPostTabClick = { navController.navigate(Screen.PostJob.route) },
-                onProfileTabClick = { }
+                onProfileTabClick = { navController.navigate(Screen.EmployerProfile.route) }
             )
         }
 
@@ -291,8 +296,12 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                 isSubmitting = isSubmitting,
                 errorMessage = postError,
                 onBackClick = { navController.popBackStack() },
-                onDashboardTabClick = { navController.navigate(Screen.Dashboard.route) { popUpTo(Screen.Dashboard.route) { inclusive = true } } },
-                onProfileTabClick = { /*TODO: profile screen*/ },
+                onDashboardTabClick = {
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.Dashboard.route) { inclusive = true }
+                    }
+                },
+                onProfileTabClick = { navController.navigate(Screen.EmployerProfile.route) },
                 onPostClick = { formData ->
                     val employerId = SupabaseClient.client.auth.currentUserOrNull()?.id
                     if (employerId == null) {
@@ -350,7 +359,7 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             var updateError by remember { mutableStateOf<String?>(null) }
 
             if (job == null) {
-                androidx.compose.material3.Text("Job not found")
+                Text("Job not found")
             } else {
                 DetailsScreen(
                     initialData = job.toPostJobFormData(),
@@ -373,12 +382,12 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                             popUpTo(Screen.Dashboard.route) { inclusive = true }
                         }
                     },
-                    onProfileTabClick = { /* TODO: profile screen */ }
+                    onProfileTabClick = { navController.navigate(Screen.EmployerProfile.route) }
                 )
             }
         }
 
-        //Manage Applicants Screen
+        // Manage Applicants Screen
         composable(Screen.ManageApplicants.route) {
             val employerId = SupabaseClient.client.auth.currentUserOrNull()?.id
             val applicationRepository = remember { ApplicationRepository() }
@@ -431,13 +440,44 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                     }
                 },
                 onPostTabClick = { navController.navigate(Screen.PostJob.route) },
-                onProfileTabClick = { }
+                onProfileTabClick = { navController.navigate(Screen.EmployerProfile.route) }
+            )
+        }
+
+        // Employer Profile Screen
+        composable(Screen.EmployerProfile.route) {
+            EmployerProfileRoute(
+                onDashboardClick = {
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.Dashboard.route) { inclusive = true }
+                    }
+                },
+                onPostClick = {
+                    navController.navigate(Screen.PostJob.route)
+                },
+                onEditProfileClick = {
+                    // TODO: navigate to Edit Profile Screen
+                },
+                onChangePasswordClick = {
+                    // TODO: navigate to Update Password Screen
+                },
+                onTermsClick = {
+                    // TODO: navigate to Terms & Conditions Screen
+                },
+                onMoreOptionsClick = {
+                    // TODO: navigate to More Options Screen
+                },
+                onLogoutNavigateToLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
             )
         }
 
         // TODO: Job Seeker home
         composable(Screen.JobSeekerHome.route) {
-            androidx.compose.material3.Text("Job Seeker home — coming soon")
+            Text("Job Seeker home — coming soon")
         }
     }
 }
