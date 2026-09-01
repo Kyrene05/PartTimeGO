@@ -28,6 +28,23 @@ data class EmployerProfileDto(
     @SerialName("avatar_url") val avatarUrl: String? = null
 )
 
+@Serializable
+data class JobSummaryDto(
+    @SerialName("id") val id: String,
+    @SerialName("title") val title: String,
+    @SerialName("category") val category: String? = null,
+    @SerialName("salary") val salary: String? = null,
+    @SerialName("status") val status: String? = "open"
+)
+
+data class JobItemSummary(
+    val id: String,
+    val title: String,
+    val category: String,
+    val salary: String,
+    val status: String
+)
+
 data class EmployerProfileUiState(
     val userName: String = "",
     val companyName: String = "",
@@ -36,6 +53,10 @@ data class EmployerProfileUiState(
     val companyBackground: String = "",
     val avatarUrl: String? = null,
     val selectedImageUri: Uri? = null,
+
+    val activeJobs: List<JobItemSummary> = emptyList(),
+    val isLoadingJobs: Boolean = false,
+
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val updateSuccess: Boolean = false,
@@ -53,15 +74,18 @@ class EmployerProfileViewModel(
         loadUserProfile()
     }
 
-    fun loadUserProfile() {
+    fun loadUserProfile(targetEmployerId: String? = null) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
                 val currentUser = supabaseClient.auth.currentUserOrNull()
-                val userId = currentUser?.id ?: return@launch
-                val email = currentUser.email.orEmpty()
+                val userId = targetEmployerId ?: currentUser?.id ?: return@launch
 
-                val authMetaData = currentUser.userMetadata
+                val email = if (targetEmployerId == null || targetEmployerId == currentUser?.id) {
+                    currentUser?.email.orEmpty()
+                } else ""
+
+                val authMetaData = currentUser?.userMetadata
                 val registeredName = authMetaData?.get("full_name")?.jsonPrimitive?.content
                     ?: authMetaData?.get("user_name")?.jsonPrimitive?.content
                     ?: authMetaData?.get("name")?.jsonPrimitive?.content
@@ -96,6 +120,9 @@ class EmployerProfileViewModel(
                         isLoading = false
                     )
                 }
+
+                loadActiveJobs(userId)
+
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -107,9 +134,50 @@ class EmployerProfileViewModel(
         }
     }
 
+    fun loadActiveJobs(employerId: String? = null) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingJobs = true) }
+            try {
+                val userId = employerId ?: supabaseClient.auth.currentUserOrNull()?.id ?: return@launch
+
+                val jobsList = supabaseClient.postgrest["jobs"]
+                    .select {
+                        filter {
+                            eq("employer_id", userId)
+                            eq("status", "open") // 只过滤正在招聘中的职位
+                        }
+                    }
+                    .decodeList<JobSummaryDto>()
+                    .map { dto ->
+                        JobItemSummary(
+                            id = dto.id,
+                            title = dto.title,
+                            category = dto.category.orEmpty(),
+                            salary = dto.salary.orEmpty(),
+                            status = dto.status.orEmpty()
+                        )
+                    }
+
+                _uiState.update {
+                    it.copy(
+                        activeJobs = jobsList,
+                        isLoadingJobs = false
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoadingJobs = false) }
+            }
+        }
+    }
+
     fun onUserNameChange(value: String) { _uiState.update { it.copy(userName = value) } }
     fun onCompanyNameChange(value: String) { _uiState.update { it.copy(companyName = value) } }
-    fun onPhoneChange(value: String) { _uiState.update { it.copy(phone = value) } }
+
+    fun onPhoneChange(value: String) {
+        val digits = value.removePrefix("+60").removePrefix("60").filter { it.isDigit() }
+        _uiState.update { it.copy(phone = digits) }
+    }
+
     fun onCompanyBackgroundChange(value: String) { _uiState.update { it.copy(companyBackground = value) } }
     fun onAvatarSelected(uri: Uri) { _uiState.update { it.copy(selectedImageUri = uri) } }
     fun resetUpdateSuccess() { _uiState.update { it.copy(updateSuccess = false) } }
@@ -206,10 +274,7 @@ class EmployerProfileViewModel(
             try {
                 val userId = supabaseClient.auth.currentUserOrNull()?.id
                 if (userId != null) {
-                    // 1. 调用 Supabase 后端的 RPC 函数（以 SECURITY DEFINER 权限一次性级联清理关联表 + auth.users）
                     supabaseClient.postgrest.rpc("delete_current_user")
-
-                    // 2. 登出 Auth session
                     supabaseClient.auth.signOut()
                     onResult(true, null)
                 } else {
