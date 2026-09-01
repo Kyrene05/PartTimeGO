@@ -18,7 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.focusModifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -43,7 +42,7 @@ fun WorkerNavBar(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(55.dp),
+            .height(64.dp),
         color = Color.White,
         border = BorderStroke(
             width = 1.dp,
@@ -53,7 +52,7 @@ fun WorkerNavBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 5.dp)
+                .padding(vertical = 3.dp)
         ) {
             WorkerNavBarItem(
                 icon = Icons.Default.Home,
@@ -113,8 +112,8 @@ private fun WorkerNavBarItem(
             contentDescription = label,
             tint = itemColor,
             modifier = Modifier
-                .height(18.dp)
-                .padding(bottom = 2.dp)
+                .height(36.dp)
+                .padding(bottom = 1.dp)
         )
         Text(
             text = label,
@@ -124,7 +123,7 @@ private fun WorkerNavBarItem(
             } else {
                 FontWeight.Normal
             },
-            fontSize = 7.sp
+            fontSize = 13.sp
         )
     }
 }

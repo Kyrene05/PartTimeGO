@@ -24,6 +24,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -211,7 +213,7 @@ private fun WorkerProfileHeader(
             Text(
                 text = "Profile",
                 color = Color.White,
-                fontSize = 13.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
 
@@ -231,7 +233,7 @@ private fun WorkerProfileHeader(
                         imageVector = Icons.Default.Settings,
                         contentDescription = "Edit Profile",
                         tint = Color.White,
-                        modifier = Modifier.size(9.dp)
+                        modifier = Modifier.size(15.dp)
                     )
 
                     Spacer(Modifier.width(3.dp))
@@ -239,7 +241,7 @@ private fun WorkerProfileHeader(
                     Text(
                         text = "Edit Profile",
                         color = Color.White,
-                        fontSize = 7.sp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -255,7 +257,7 @@ private fun WorkerProfileHeader(
             // Avatar
             Box(
                 modifier = Modifier
-                    .size(38.dp)
+                    .size(84.dp)
                     .clip(CircleShape)
                     .background(Color.White),
                 contentAlignment = Alignment.Center
@@ -267,18 +269,18 @@ private fun WorkerProfileHeader(
                         ?.uppercase()
                         ?: "A",
                     color = Color(0xFF262075),
-                    fontSize = 16.sp,
+                    fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
                 )
 
                 // Online indicator
                 Box(
                     modifier = Modifier
-                        .size(9.dp)
+                        .size(15.dp)
                         .clip(CircleShape)
                         .background(Color(0xFF118C20))
                         .border(
-                            width = 2.dp,
+                            width = 5.dp,
                             color = Color(0xFF262075),
                             shape = CircleShape
                         )
@@ -286,23 +288,57 @@ private fun WorkerProfileHeader(
                 )
             }
 
-            Spacer(Modifier.width(9.dp))
+            Spacer(Modifier.width(16.dp))
 
             Column {
                 Text(
                     text = worker.workerName,
                     color = Color.White,
-                    fontSize = 14.sp,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
 
                 Spacer(Modifier.height(2.dp))
 
-                Text(
-                    text = worker.workerPhoneNo,
-                    color = Color.White,
-                    fontSize = 7.sp
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Email,
+                        contentDescription = "email",
+                        tint = Color.White,
+                        modifier = Modifier.size(12.dp)
+                    )
+
+                    Spacer(Modifier.width(5.dp))
+
+                    Text(
+                        text = worker.workerEmail,
+                        color = Color.White,
+                        fontSize = 12.sp
+                    )
+                }
+
+                Spacer(Modifier.height(2.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Phone,
+                        contentDescription = "phone",
+                        tint = Color.White,
+                        modifier = Modifier.size(12.dp)
+                    )
+
+                    Spacer(Modifier.width(5.dp))
+
+                    Text(
+                        text = worker.workerPhoneNo,
+                        color = Color.White,
+                        fontSize = 12.sp
+                    )
+                }
             }
         }
     }
@@ -345,7 +381,7 @@ private fun AvailabilityCard(
 
             Box(
                 modifier = Modifier
-                    .size(28.dp)
+                    .size(48.dp)
                     .clip(RoundedCornerShape(7.dp))
                     .background(Color(0xFF118C20).copy(alpha = 0.5f)),
                 contentAlignment = Alignment.Center
@@ -355,7 +391,7 @@ private fun AvailabilityCard(
                     imageVector = Icons.Default.CalendarMonth,
                     contentDescription = null,
                     tint = Color(0xFF4D8C62),
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(36.dp)
                 )
             }
 
@@ -371,7 +407,7 @@ private fun AvailabilityCard(
                         getAvailabilityText(selectedDays)
                     },
                     color = Color.Black,
-                    fontSize = 12.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -447,7 +483,7 @@ private fun ProfileSectionTitle(
     Text(
         text = title,
         color = Color.Black,
-        fontSize = 11.sp,
+        fontSize = 16.sp,
         fontWeight = FontWeight.Bold
     )
 }
@@ -494,7 +530,7 @@ private fun FlowChipRow(
                         imageVector = Icons.Default.Add,
                         contentDescription = "Add Skills",
                         tint = Color.Black,
-                        modifier = Modifier.size(13.dp)
+                        modifier = Modifier.size(14.dp)
                     )
                 }
             }
@@ -530,167 +566,12 @@ private fun ProfileChip(
         Text(
             text = text,
             color = textColor,
-            fontSize = 7.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(8.dp, 5.dp)
         )
     }
 }
-
-//@Composable
-//private fun PreferredLocationSection(
-//    preferredState: String,
-//    preferredLocations: String
-//) {
-//
-//    var expanded by remember {
-//        mutableStateOf(false)
-//    }
-//
-//    val selectedAreas = preferredLocations
-//        .split(",")
-//        .map { it.trim() }
-//        .filter { it.isNotEmpty() }
-//
-//    val availableAreas = LocationData.getAreas(preferredState)
-//
-//    Column(
-//        modifier = Modifier.fillMaxWidth()
-//    ) {
-//
-//        // Selected State
-//        Surface(
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .clickable {
-//                    expanded = !expanded
-//                },
-//            shape = RoundedCornerShape(9.dp),
-//            color = Color.White,
-//            border = BorderStroke(
-//                width = 1.dp,
-//                color = Color(0xFFD0D0CC)
-//            )
-//        ) {
-//
-//            Row(
-//                modifier = Modifier.padding(
-//                    horizontal = 12.dp,
-//                    vertical = 10.dp
-//                ),
-//                verticalAlignment = Alignment.CenterVertically
-//            ) {
-//
-//                Column(
-//                    modifier = Modifier.weight(1f)
-//                ) {
-//
-//                    Text(
-//                        text = "State",
-//                        fontSize = 7.sp,
-//                        color = Color.Gray
-//                    )
-//
-//                    Spacer(
-//                        modifier = Modifier.height(2.dp)
-//                    )
-//
-//                    Text(
-//                        text = if (preferredState.isBlank()) {
-//                            "No preferred state selected"
-//                        } else {
-//                            preferredState
-//                        },
-//                        fontSize = 10.sp,
-//                        fontWeight = FontWeight.Bold,
-//                        color = Color.Black
-//                    )
-//                }
-//
-//                Icon(
-//                    imageVector = if (expanded) {
-//                        Icons.Default.KeyboardArrowUp
-//                    } else {
-//                        Icons.Default.KeyboardArrowDown
-//                    },
-//                    contentDescription = "Show Areas",
-//                    tint = Color.Black,
-//                    modifier = Modifier.size(18.dp)
-//                )
-//            }
-//        }
-//
-//        Spacer(
-//            modifier = Modifier.height(8.dp)
-//        )
-//
-//        // Display selected locations as chips
-//        if (selectedAreas.isNotEmpty()) {
-//
-//            Text(
-//                text = "Selected Areas",
-//                fontSize = 8.sp,
-//                fontWeight = FontWeight.Bold,
-//                color = Color.Black
-//            )
-//
-//            Spacer(
-//                modifier = Modifier.height(6.dp)
-//            )
-//
-//            FlowChipRow(
-//                chips = selectedAreas,
-//                chipType = ChipType.GRAY,
-//                showAddButton = false
-//            )
-//        }
-//
-//        // Automatically generated areas
-//        if (expanded) {
-//
-//            Spacer(
-//                modifier = Modifier.height(10.dp)
-//            )
-//
-//            Text(
-//                text = "Available Areas in $preferredState",
-//                fontSize = 8.sp,
-//                fontWeight = FontWeight.Bold,
-//                color = Color.Black
-//            )
-//
-//            Spacer(
-//                modifier = Modifier.height(6.dp)
-//            )
-//
-//            if (availableAreas.isEmpty()) {
-//
-//                Text(
-//                    text = "No area data available.",
-//                    fontSize = 8.sp,
-//                    color = Color.Gray
-//                )
-//
-//            } else {
-//
-//                Column(
-//                    verticalArrangement = Arrangement.spacedBy(6.dp)
-//                ) {
-//
-//                    availableAreas.forEach { area ->
-//
-//                        val isSelected = area in selectedAreas
-//
-//                        AreaOption(
-//                            area = area,
-//                            selected = isSelected
-//                        )
-//                    }
-//                }
-//            }
-//        }
-//    }
-//}
 
 @Composable
 private fun AreaOption(
@@ -727,14 +608,14 @@ private fun AreaOption(
             Text(
                 text = area,
                 modifier = Modifier.weight(1f),
-                fontSize = 9.sp,
+                fontSize = 14.sp,
                 color = Color.Black
             )
 
             if (selected) {
                 Text(
                     text = "Selected",
-                    fontSize = 7.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF262075)
                 )
@@ -764,7 +645,7 @@ private fun GigExperienceCard(
             Text(
                 text = "Work History",
                 color = Color.Black,
-                fontSize = 11.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
 
@@ -777,7 +658,7 @@ private fun GigExperienceCard(
                     workHistory
                 },
                 color = Color.Black,
-                fontSize = 8.sp,
+                fontSize = 14.sp,
                 lineHeight = 12.sp
             )
         }
@@ -792,7 +673,7 @@ fun DayButton(
 ) {
     Surface(
         modifier = Modifier
-            .size(26.dp)
+            .size(24.dp)
             .clickable {
                 onClick()
             },
