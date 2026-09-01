@@ -4,8 +4,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.parttimego.data.model.Worker
 import com.example.parttimego.data.repository.WorkerRepository
+import kotlinx.coroutines.launch
 
 class WorkerViewModel(
     private val repository: WorkerRepository
@@ -23,18 +25,72 @@ class WorkerViewModel(
         private set
 
     fun loadWorker(userId: String){
-        // Get worker from repository
+        viewModelScope.launch {
+            isLoading = true
+            errorMessage = null
+            try {
+                worker = repository.getWorkerByUserId(userId)
+                if (worker == null) {
+                    errorMessage = "Worker profile not found."
+                }
+            } catch (e: Exception) {
+                errorMessage = e.message?: "Failed to load worker profile."
+            } finally {
+                isLoading = false
+            }
+        }
     }
 
-    fun createWorker(worker: Worker){
-        // Save worker through repository
+    suspend fun createWorker(worker: Worker){
+        viewModelScope.launch {
+            isLoading = true
+            errorMessage = null
+        }
+        try {
+            repository.createWorker(worker)
+            // use to update UI immediately
+            this@WorkerViewModel.worker = worker
+        } catch (e: Exception) {
+            errorMessage = e.message ?: "Failed to load worker profile"
+        } finally {
+            isLoading = false
+        }
     }
 
     fun updateWorker(worker: Worker) {
-        // Update worker through repository
+        viewModelScope.launch {
+            isLoading = true
+            errorMessage = null
+            try {
+                repository.updateWorker(worker)
+                // use to update UI immediately
+                this@WorkerViewModel.worker = worker
+            } catch (e: Exception) {
+                errorMessage = e.message ?:"Failed to create worker profile"
+            } finally {
+                isLoading = false
+            }
+        }
     }
 
     fun deleteWorker(worker: Worker){
-        // Delete worker from repository
+        viewModelScope.launch {
+            isLoading = true
+            errorMessage = null
+            try {
+                repository.deleteWorker(worker)
+                // Remove worker from current UI state
+                this@WorkerViewModel.worker = null
+            } catch (e: Exception) {
+                errorMessage = e.message?: "Failed to delete worker profile"
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    // Clear error message
+    fun clearError(){
+        errorMessage = null
     }
 }
