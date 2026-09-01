@@ -119,7 +119,6 @@ fun PostJobScreen(
     val draft = remember { PostJobDraftPrefs.load(context) }
 
     var title by remember { mutableStateOf(draft?.title ?: "") }
-    var companyName by remember { mutableStateOf(draft?.companyName ?: "") }
     var category by remember { mutableStateOf(draft?.category ?: "Event Crew") }
     var salary by remember { mutableStateOf(draft?.salary ?: "") }
     var startDate by remember { mutableStateOf(draft?.startDate ?: "") }
@@ -259,7 +258,7 @@ fun PostJobScreen(
                         Text("Company Name (Locked)", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MutedText)
                         Spacer(modifier = Modifier.height(6.dp))
                         OutlinedTextField(
-                            value = companyName.ifBlank { "Set your company name in Profile" },
+                            value = companyName.ifBlank { "Set company name in Profile" },
                             onValueChange = { },
                             readOnly = true,
                             enabled = false,

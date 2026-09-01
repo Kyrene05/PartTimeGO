@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,7 +29,6 @@ import androidx.compose.ui.unit.sp
 import com.example.parttimego.ui.theme.DarkNavy
 import com.example.parttimego.ui.theme.MutedText
 import com.example.parttimego.ui.theme.PartTimeGOTheme
-import com.example.parttimego.ui.theme.SoftGrey
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -54,7 +54,7 @@ fun DetailsScreen(
 
     // Editable copies of every field, seeded from initialData
     var title by remember { mutableStateOf(initialData.title) }
-    var companyName by remember { mutableStateOf(initialData.companyName) }
+    val companyName = initialData.companyName
     var category by remember { mutableStateOf(initialData.category) }
     var salary by remember { mutableStateOf(initialData.salary) }
     var startDate by remember { mutableStateOf(initialData.startDate) }
@@ -82,7 +82,7 @@ fun DetailsScreen(
     var showStartTimePicker by remember { mutableStateOf(false) }
     var showEndTimePicker by remember { mutableStateOf(false) }
 
-    val categories = listOf("Event Crew", "Promoter", "Retail", "F&B","Other")
+    val categories = listOf("Event Crew", "Promoter", "Retail", "F&B", "Other")
 
     Scaffold(
         bottomBar = {
@@ -161,15 +161,42 @@ fun DetailsScreen(
                         .padding(20.dp)
                 ) {
                     if (isEditing) {
-                        // --- EDIT MODE: same form components as Post Job ---
+                        // EDIT MODE
                         SectionLabel("1", "Basic Information")
                         FormField("Job Title", title, isError = titleError != null, errorMessage = titleError) {
                             title = it; titleError = null
                         }
                         Spacer(modifier = Modifier.height(12.dp))
-                        FormField("Company Name", companyName, isError = companyNameError != null, errorMessage = companyNameError) {
-                            companyName = it; companyNameError = null
+
+                        // Locked Company Name Field
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Text("Company Name (Locked)", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MutedText)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            OutlinedTextField(
+                                value = companyName.ifBlank { "Set company name in Profile" },
+                                onValueChange = { },
+                                readOnly = true,
+                                enabled = false,
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Filled.Lock,
+                                        contentDescription = "Locked",
+                                        tint = MutedText,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                },
+                                singleLine = true,
+                                shape = RoundedCornerShape(10.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    unfocusedBorderColor = Color.Black,
+                                    disabledBorderColor = Color.Black,
+                                    disabledTextColor = if (companyName.isBlank()) Color.Red else Color.Black,
+                                    disabledContainerColor = Color(0xFFF5F5F5)
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
+
                         Spacer(modifier = Modifier.height(12.dp))
                         Text("Category", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MutedText)
                         Spacer(modifier = Modifier.height(6.dp))
@@ -293,7 +320,7 @@ fun DetailsScreen(
                             }
                         }
                     } else {
-                        // --- READ-ONLY VIEW: plain text, no input boxes ---
+                        // --- READ-ONLY VIEW ---
                         ReadOnlySection("1", "Basic Information") {
                             ReadOnlyRow("Job Title", title)
                             ReadOnlyRow("Company Name", companyName)
@@ -325,7 +352,7 @@ fun DetailsScreen(
             containerColor = Color.White,
             titleContentColor = Color.Black,
             textContentColor = MutedText,
-            title = { Text("Delete this job?", fontWeight = FontWeight.Bold,color=DarkNavy) },
+            title = { Text("Delete this job?", fontWeight = FontWeight.Bold, color = DarkNavy) },
             text = { Text("This can't be undone. Applicants will no longer see this listing.") },
             confirmButton = {
                 TextButton(onClick = {
@@ -352,7 +379,7 @@ fun DetailsScreen(
             containerColor = Color.White,
             titleContentColor = Color.Black,
             textContentColor = MutedText,
-            title = { Text("Save these changes?", fontWeight = FontWeight.Bold,color=DarkNavy) },
+            title = { Text("Save these changes?", fontWeight = FontWeight.Bold, color = DarkNavy) },
             text = { Text("This will update the job posting immediately.") },
             confirmButton = {
                 TextButton(onClick = {
@@ -376,7 +403,7 @@ fun DetailsScreen(
         )
     }
 
-    // Date/Time pickers — same pattern as PostJobScreen
+    // Date/Time pickers
     if (showStartDatePicker) {
         val today = LocalDate.now().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
         val state = rememberDatePickerState(selectableDates = object : SelectableDates {
@@ -438,18 +465,18 @@ fun DetailsScreen(
     }
 
     if (showEndTimePicker) {
-        val state = rememberTimePickerState()
+        val timeState = rememberTimePickerState()
         AlertDialog(
             onDismissRequest = { showEndTimePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    endTime = LocalTime.of(state.hour, state.minute).format(DateTimeFormatter.ofPattern("h:mm a"))
+                    endTime = LocalTime.of(timeState.hour, timeState.minute).format(DateTimeFormatter.ofPattern("h:mm a"))
                     endTimeError = null
                     showEndTimePicker = false
                 }) { Text("OK", color = DarkNavy) }
             },
             dismissButton = { TextButton(onClick = { showEndTimePicker = false }) { Text("Cancel", color = MutedText) } },
-            text = { TimePicker(state = state) }
+            text = { TimePicker(state = timeState) }
         )
     }
 }
