@@ -68,6 +68,7 @@ import com.example.parttimego.nav.JobSeekerNavItem
 import com.example.parttimego.ui.theme.PartTimeGOTheme
 import com.example.parttimego.viewmodel.JobViewModel
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -80,7 +81,6 @@ private val TagRed = Color(0xFFE53935)
 
 @Composable
 fun JobSeekerHomeScreen(
-    worker: Worker,
     onGigClick: (String) -> Unit = {},
     onExploreClick: () -> Unit = {},
     onViewTodayGigsClick: () -> Unit = onExploreClick,
@@ -97,9 +97,32 @@ fun JobSeekerHomeScreen(
         jobViewModel.refreshAllJobs()
     }
 
+    var userName by remember { mutableStateOf("User") }
+
+    LaunchedEffect(Unit) {
+        val currentUserId = SupabaseClient.client.auth.currentUserOrNull()?.id
+
+        if (currentUserId != null) {
+            try {
+                // Fetch from 'worker' table
+                val worker = SupabaseClient.client
+                    .postgrest["worker"]
+                    .select {
+                        filter { eq("user_id", currentUserId) }
+                    }
+                    .decodeSingleOrNull<Worker>()
+
+                // Use worker's full name, or fallback to "User"
+                userName = worker?.workerName ?: "User"
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     JobSeekerHomeContent(
         jobs = jobs,
-        userName = worker.workerName,
+        userName = userName,
         onGigClick = onGigClick,
         onExploreClick = onExploreClick,
         onViewTodayGigsClick = onViewTodayGigsClick,

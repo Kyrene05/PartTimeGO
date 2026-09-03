@@ -20,6 +20,7 @@ import androidx.navigation.navArgument
 import com.example.parttimego.data.JobPost
 import com.example.parttimego.data.SupabaseClient
 import com.example.parttimego.data.local.JobEntity
+import com.example.parttimego.data.model.Worker
 import com.example.parttimego.data.repository.ApplicationRepository
 import com.example.parttimego.screen.ApplicantStatus
 import com.example.parttimego.screen.ApplicantUiModel
@@ -43,6 +44,7 @@ import com.example.parttimego.screen.worker.JobSeekerAppliedScreen
 import com.example.parttimego.screen.worker.JobSeekerGigDetailScreen
 import com.example.parttimego.screen.worker.JobSeekerGigListingScreen
 import com.example.parttimego.screen.worker.JobSeekerHomeScreen
+import com.example.parttimego.screen.worker.JobSeekerProfileScreen
 import com.example.parttimego.viewmodel.AuthState
 import com.example.parttimego.viewmodel.AuthViewModel
 import com.example.parttimego.viewmodel.EmployerProfileViewModel
@@ -56,6 +58,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -106,9 +110,9 @@ private fun JobEntity.toStatusFilter(): JobStatusFilter {
         else -> JobStatusFilter.ACTIVE
     }
 }
-@kotlinx.serialization.Serializable
+@Serializable
 private data class CompanyNameDto(
-    @kotlinx.serialization.SerialName("company_name") val companyName: String? = null
+    @SerialName("company_name") val companyName: String? = null
 )
 @Composable
 fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel = viewModel()) {
@@ -744,8 +748,95 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
         composable(
             route = Screen.JobSeekerProfile.route
         ) {
-            // Profile screen will be connected to the current Worker data
-            // in the next part.
+            val currentUserId =
+                SupabaseClient.client.auth.currentUserOrNull()?.id
+
+            var worker by remember {
+                mutableStateOf<Worker?>(null)
+            }
+
+            var isLoading by remember {
+                mutableStateOf(true)
+            }
+
+            LaunchedEffect(currentUserId) {
+                if (currentUserId != null) {
+                    try {
+                        worker = SupabaseClient.client
+                            .postgrest["worker"]
+                            .select {
+                                filter {
+                                    eq("user_id", currentUserId)
+                                }
+                            }
+                            .decodeSingleOrNull<Worker>()
+                    } catch (e: Exception) {
+                        worker = null
+                    }
+
+                    isLoading = false
+                } else {
+                    isLoading = false
+                }
+            }
+
+            when {
+                isLoading -> {
+                    Text("Loading profile...")
+                }
+
+                worker != null -> {
+                    JobSeekerProfileScreen(
+                        worker = worker!!,
+
+                        onEditProfileClick = {
+                            navController.navigate(
+                                Screen.EditJobSeekerProfile.route
+                            )
+                        },
+
+                        onHomeClick = {
+                            navController.navigate(
+                                Screen.JobSeekerHome.route
+                            ) {
+                                popUpTo(Screen.JobSeekerHome.route) {
+                                    inclusive = false
+                                }
+                                launchSingleTop = true
+                            }
+                        },
+
+                        onExploreClick = {
+                            navController.navigate(
+                                Screen.JobSeekerGigListing.route
+                            ) {
+                                launchSingleTop = true
+                            }
+                        },
+
+                        onAppliedClick = {
+                            navController.navigate(
+                                Screen.JobSeekerApplied.route
+                            ) {
+                                launchSingleTop = true
+                            }
+                        },
+
+                        onAvailabilityChange = { available ->
+                            if (currentUserId != null) {
+
+                            worker = worker?.copy(
+                                workerAvailability = available
+                            )
+                        }
+                        }
+                    )
+                }
+
+                else -> {
+                    Text("Unable to load profile")
+                }
+            }
         }
     }
 }
