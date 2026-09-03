@@ -72,6 +72,8 @@ sealed class Screen(val route: String) {
     object PostJob : Screen("post_job")
     object JobSeekerHome : Screen("job_seeker_home") // TODO: change to job seeker homepage
     object JobSeekerGigListing : Screen("job_seeker_gig_listing")
+    object JobSeekerProfile : Screen("job_seeker_profile")
+    object EditJobSeekerProfile : Screen("edit_job_seeker_profile")
     object EmployerProfile : Screen("employer_profile")
     object EditEmployerProfile : Screen("edit_employer_profile")
     object ChangePassword : Screen("change_password")
@@ -604,7 +606,7 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                     // Applied Jobs will be connected later
                 },
                 onProfileClick = {
-                    // Job Seeker Profile will be connected later
+                    navController.navigate(Screen.JobSeekerProfile.route)
                 }
             )
         }
@@ -629,7 +631,7 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                     // Applied Jobs will be connected later
                 },
                 onProfileClick = {
-                    // Job Seeker Profile will be connected later
+                    navController.navigate(Screen.JobSeekerProfile.route)
                 }
             )
         }

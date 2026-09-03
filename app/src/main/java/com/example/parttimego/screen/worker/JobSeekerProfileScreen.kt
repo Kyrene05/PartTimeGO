@@ -235,15 +235,6 @@ private fun JobSeekerProfileHeader(
                         tint = Color.White,
                         modifier = Modifier.size(15.dp)
                     )
-
-                    Spacer(Modifier.width(3.dp))
-
-                    Text(
-                        text = "Edit Profile",
-                        color = Color.White,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
-                    )
                 }
             }
         }

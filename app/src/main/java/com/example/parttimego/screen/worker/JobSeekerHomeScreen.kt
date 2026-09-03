@@ -2,6 +2,8 @@ package com.example.parttimego.screen.worker
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,7 +30,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,6 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -53,6 +61,9 @@ import com.example.parttimego.nav.JobSeekerNavBar
 import com.example.parttimego.nav.JobSeekerNavItem
 import com.example.parttimego.ui.theme.PartTimeGOTheme
 import com.example.parttimego.viewmodel.JobViewModel
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 private val Purple = Color(0xFF262075)
 private val AccentGreen = Color(0xFF2E9E5B)
@@ -64,6 +75,7 @@ fun JobSeekerHomeScreen(
     userName: String = "User",
     onGigClick: (String) -> Unit = {},
     onExploreClick: () -> Unit = {},
+    onViewTodayGigsClick: () -> Unit = onExploreClick,
     onAppliedClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     jobViewModel: JobViewModel = viewModel()
@@ -82,18 +94,21 @@ fun JobSeekerHomeScreen(
         userName = userName,
         onGigClick = onGigClick,
         onExploreClick = onExploreClick,
+        onViewTodayGigsClick = onViewTodayGigsClick,
         onAppliedClick = onAppliedClick,
         onProfileClick = onProfileClick
     )
 }
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobSeekerHomeContent(
     jobs: List<JobEntity>,
     userName: String = "User",
     onGigClick: (String) -> Unit = {},
     onExploreClick: () -> Unit = {},
+    onViewTodayGigsClick: () -> Unit = onExploreClick,
     onAppliedClick: () -> Unit = {},
     onProfileClick: () -> Unit = {}
 ) {
@@ -102,11 +117,85 @@ fun JobSeekerHomeContent(
         mutableStateOf("")
     }
 
+    var showFilterSheet by remember { mutableStateOf(false) }
+    // Applied filter values
+    var selectedLocation by remember { mutableStateOf<String?>(null) }
+    var selectedSalaryRange by remember { mutableStateOf<String?>(null) }
+    var selectedWorkingHour by remember { mutableStateOf<String?>(null) }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
+    // Temporary filter values inside Bottom Sheet
+    var tempLocation by remember { mutableStateOf<String?>(null) }
+    var tempSalaryRange by remember { mutableStateOf<String?>(null) }
+    var tempWorkingHour by remember { mutableStateOf<String?>(null) }
+    var tempCategory by remember { mutableStateOf<String?>(null) }
+
+    val today = LocalDate.now()
+
+    val todayJobs = jobs.filter { job ->
+        runCatching {
+            Instant.parse(job.createdAt)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate() == today
+        }.getOrDefault(false)
+    }
+
+    val locations = jobs
+        .map { it.location }
+        .filter { it.isNotBlank() }
+        .distinct()
+        .sorted()
+
     val filteredJobs = jobs.filter { job ->
 
-        job.title.contains(searchText, ignoreCase = true) ||
-                job.category.contains(searchText, ignoreCase = true) ||
-                job.location.contains(searchText, ignoreCase = true)
+        val matchesSearch =
+            searchText.isBlank() ||
+                    job.title.contains(searchText, ignoreCase = true) ||
+                    job.category.contains(searchText, ignoreCase = true) ||
+                    job.location.contains(searchText, ignoreCase = true) ||
+                    job.companyName?.contains(searchText, ignoreCase = true) == true
+
+        val matchesLocation =
+            selectedLocation == null ||
+                    job.location.equals(selectedLocation, ignoreCase = true)
+
+        val matchesCategory =
+            selectedCategory == null ||
+                    job.category.equals(selectedCategory, ignoreCase = true)
+
+        val matchesSalary = when (selectedSalaryRange) {
+            null -> true
+            "Below RM50" -> job.salary < 50
+            "RM50 - RM100" -> job.salary in 50.0..100.0
+            "RM101 - RM150" -> job.salary > 100 && job.salary <= 150
+            "Above RM150" -> job.salary > 150
+            else -> true
+        }
+
+        val matchesWorkingHour = when (selectedWorkingHour) {
+            null -> true
+            "Morning" -> job.workingHoursStart?.startsWith("0") == true ||
+                    job.workingHoursStart?.startsWith("1") == true
+            "Afternoon" -> job.workingHoursStart?.contains("12") == true ||
+                    job.workingHoursStart?.contains("13") == true ||
+                    job.workingHoursStart?.contains("14") == true ||
+                    job.workingHoursStart?.contains("15") == true ||
+                    job.workingHoursStart?.contains("16") == true ||
+                    job.workingHoursStart?.contains("17") == true
+            "Evening" -> job.workingHoursStart?.contains("18") == true ||
+                    job.workingHoursStart?.contains("19") == true ||
+                    job.workingHoursStart?.contains("20") == true ||
+                    job.workingHoursStart?.contains("21") == true ||
+                    job.workingHoursStart?.contains("22") == true ||
+                    job.workingHoursStart?.contains("23") == true
+            "Full Day" -> true
+            else -> true
+        }
+
+        matchesSearch &&
+                matchesLocation &&
+                matchesCategory &&
+                matchesSalary &&
+                matchesWorkingHour
     }
 
     val categoryCounts = jobs.groupingBy { it.category }.eachCount()
@@ -121,7 +210,10 @@ fun JobSeekerHomeContent(
             modifier = Modifier.fillMaxSize()
         ) {
 
-            JobSeekerHomeHeader(userName = userName)
+            JobSeekerHomeHeader(
+                userName = userName,
+                onProfileClick = onProfileClick
+            )
 
             Surface(
                 modifier = Modifier
@@ -169,11 +261,24 @@ fun JobSeekerHomeContent(
                             },
                             trailingIcon = {
 
-                                Icon(
-                                    imageVector = Icons.Default.FilterList,
-                                    contentDescription = "Filter",
-                                    tint = Purple
-                                )
+                                IconButton(
+                                    onClick = {
+
+                                        tempLocation = selectedLocation
+                                        tempSalaryRange = selectedSalaryRange
+                                        tempWorkingHour = selectedWorkingHour
+                                        tempCategory = selectedCategory
+
+                                        showFilterSheet = true
+                                    }
+                                ) {
+
+                                    Icon(
+                                        imageVector = Icons.Default.FilterList,
+                                        contentDescription = "Filter",
+                                        tint = Purple
+                                    )
+                                }
                             },
                             shape = RoundedCornerShape(14.dp)
                         )
@@ -182,8 +287,9 @@ fun JobSeekerHomeContent(
                     item {
 
                         TodayOpportunityCard(
-                            jobsCount = jobs.size,
-                            onClick = onExploreClick
+                            jobsCount = todayJobs.size,
+                            enabled = todayJobs.isNotEmpty(),
+                            onClick = onViewTodayGigsClick
                         )
                     }
 
@@ -287,12 +393,170 @@ fun JobSeekerHomeContent(
             )
         }
     }
+
+    if (showFilterSheet) {
+
+        ModalBottomSheet(
+            onDismissRequest = {
+                showFilterSheet = false
+            }
+        ) {
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(20.dp)
+            ) {
+
+                Text(
+                    text = "Filter",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Location",
+                    fontWeight = FontWeight.Bold
+                )
+
+                locations.forEach { location ->
+                    FilterChip(
+                        selected = tempLocation == location,
+                        onClick = {
+                            tempLocation =
+                                if (tempLocation == location) null else location
+                        },
+                        label = {
+                            Text(location)
+                        },
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Salary Range",
+                    fontWeight = FontWeight.Bold
+                )
+
+                listOf(
+                    "Below RM50",
+                    "RM50 - RM100",
+                    "RM101 - RM150",
+                    "Above RM150"
+                ).forEach { salary ->
+                    FilterChip(
+                        selected = tempSalaryRange == salary,
+                        onClick = {
+                            tempSalaryRange =
+                                if (tempSalaryRange == salary) null else salary
+                        },
+                        label = {
+                            Text(salary)
+                        },
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Working Hour",
+                    fontWeight = FontWeight.Bold
+                )
+
+                listOf(
+                    "Morning",
+                    "Afternoon",
+                    "Evening",
+                    "Full Day"
+                ).forEach { hour ->
+                    FilterChip(
+                        selected = tempWorkingHour == hour,
+                        onClick = {
+                            tempWorkingHour =
+                                if (tempWorkingHour == hour) null else hour
+                        },
+                        label = {
+                            Text(hour)
+                        },
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Category",
+                    fontWeight = FontWeight.Bold
+                )
+
+                listOf(
+                    "Event Crew",
+                    "Promoter",
+                    "Retail",
+                    "F&B",
+                    "Other"
+                ).forEach { category ->
+                    FilterChip(
+                        selected = tempCategory == category,
+                        onClick = {
+                            tempCategory =
+                                if (tempCategory == category) null else category
+                        },
+                        label = {
+                            Text(category)
+                        },
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+
+                    OutlinedButton(
+                        onClick = {
+                            tempLocation = null
+                            tempSalaryRange = null
+                            tempWorkingHour = null
+                            tempCategory = null
+                        }
+                    ) {
+                        Text("Reset")
+                    }
+
+                    Button(
+                        onClick = {
+                            selectedLocation = tempLocation
+                            selectedSalaryRange = tempSalaryRange
+                            selectedWorkingHour = tempWorkingHour
+                            selectedCategory = tempCategory
+                            showFilterSheet = false
+                        }
+                    ) {
+                        Text("Apply Filter")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+        }
+    }
 }
 
 
 @Composable
 private fun JobSeekerHomeHeader(
-    userName: String
+    userName: String,
+    onProfileClick: () -> Unit
 ) {
 
     Row(
@@ -331,7 +595,10 @@ private fun JobSeekerHomeHeader(
             modifier = Modifier
                 .size(52.dp)
                 .clip(CircleShape)
-                .background(Color.White),
+                .background(Color.White)
+                .clickable{
+                    onProfileClick()
+                },
             contentAlignment = Alignment.Center
         ) {
 
@@ -349,11 +616,14 @@ private fun JobSeekerHomeHeader(
 @Composable
 private fun TodayOpportunityCard(
     jobsCount: Int,
+    enabled: Boolean = jobsCount > 0,
     onClick: () -> Unit
 ) {
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .alpha(if (enabled) 1f else 0.6f),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = AccentGreen
@@ -392,7 +662,11 @@ private fun TodayOpportunityCard(
                 )
 
                 Text(
-                    text = "$jobsCount new gigs posted",
+                    text = if (jobsCount > 0) {
+                        "$jobsCount new gigs posted"
+                    } else {
+                        "No new gigs posted today"
+                    },
                     color = Color.White.copy(alpha = 0.9f),
                     fontSize = 12.sp
                 )
@@ -405,7 +679,7 @@ private fun TodayOpportunityCard(
             Surface(
                 shape = RoundedCornerShape(10.dp),
                 color = Color.White.copy(alpha = 0.20f),
-                modifier = Modifier.clickable {
+                modifier = Modifier.clickable(enabled = enabled) {
                     onClick()
                 }
             ) {
@@ -433,10 +707,11 @@ private fun CategoryGrid(
 ) {
 
     val categories = listOf(
-        "Event",
+        "Event Crew",
+        "Promoter",
         "Retail",
-        "Food & Beverage",
-        "Delivery"
+        "F&B",
+        "Other"
     )
 
     Column(

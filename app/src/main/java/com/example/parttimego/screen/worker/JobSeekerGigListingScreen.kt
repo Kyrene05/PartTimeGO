@@ -163,10 +163,11 @@ fun JobSeekerGigListingContent(
 
     val categories = listOf(
         "All",
-        "Event",
+        "Event Crew",
+        "Promoter",
         "Retail",
-        "Food & Beverage",
-        "Delivery"
+        "F&B",
+        "Other"
     )
 
     val filteredJobs = jobs.filter { job ->
