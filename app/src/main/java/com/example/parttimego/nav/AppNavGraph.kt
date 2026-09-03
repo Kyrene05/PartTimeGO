@@ -478,9 +478,13 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             ManageApplicantsScreen(
                 applicants = applicants,
                 onBackClick = { navController.popBackStack() },
-                onAcceptClick = { applicationId ->
+                onAcceptClick = { applicationId, note ->
                     coroutineScope.launch {
-                        applicationRepository.updateApplicationStatus(applicationId, "accepted")
+                        applicationRepository.updateApplicationStatus(
+                            applicationId = applicationId,
+                            status = "accepted"
+                            // employerNote = note  // uncomment once the DB column & repository method are ready
+                        )
                         applicants = applicants.map {
                             if (it.id == applicationId) it.copy(status = ApplicantStatus.ACCEPTED) else it
                         }

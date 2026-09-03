@@ -51,7 +51,10 @@ enum class ApplicantStatus { ACCEPTED, PENDING, REJECTED }
 fun ManageApplicantsScreen(
     applicants: List<ApplicantUiModel> = emptyList(),
     onBackClick: () -> Unit = {},
-    onAcceptClick: (String) -> Unit = {},
+    // onAcceptClick now also carries an optional note the employer can leave for the applicant
+    // Passed through to the backend as something
+    // like `employer_note` on the application row. Empty string means "no note".
+    onAcceptClick: (String, String) -> Unit = { _, _ -> },
     onRejectClick: (String) -> Unit = {},
     onDashboardTabClick: () -> Unit = {},
     onPostTabClick: () -> Unit = {},
@@ -60,6 +63,7 @@ fun ManageApplicantsScreen(
     val context = LocalContext.current
     var selectedFilter by remember { mutableStateOf(ApplicantStatus.PENDING) }
     var pendingAction by remember { mutableStateOf<Pair<ApplicantUiModel, ApplicantStatus>?>(null) }
+    var contactNote by remember { mutableStateOf("") }
 
     val accepted = applicants.count { it.status == ApplicantStatus.ACCEPTED }
     val pending = applicants.count { it.status == ApplicantStatus.PENDING }
@@ -163,7 +167,10 @@ fun ManageApplicantsScreen(
                         filtered.forEach { applicant ->
                             ApplicantCard(
                                 applicant = applicant,
-                                onAcceptClick = { pendingAction = applicant to ApplicantStatus.ACCEPTED },
+                                onAcceptClick = {
+                                    contactNote = ""
+                                    pendingAction = applicant to ApplicantStatus.ACCEPTED
+                                },
                                 onRejectClick = { pendingAction = applicant to ApplicantStatus.REJECTED }
                             )
                         }
@@ -182,26 +189,49 @@ fun ManageApplicantsScreen(
             title = {
                 Text(
                     if (isAccept) "Accept this applicant?" else "Reject this applicant?",
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color=DarkNavy
                 )
             },
             text = {
-                Text(
-                    if (isAccept)
-                        "${applicant.name} will be notified they're accepted for ${applicant.jobTitle}."
-                    else
-                        "${applicant.name} will be notified they're not selected for ${applicant.jobTitle}."
-                )
+                Column {
+                    Text(
+                        if (isAccept)
+                            "${applicant.name} will be notified they're accepted for ${applicant.jobTitle}."
+                        else
+                            "${applicant.name} will be notified they're not selected for ${applicant.jobTitle}."
+                    )
+
+                    // Optional note only makes sense for the accept flow — this is what
+                    // replaces the applicant-side "accept offer / reject offer" step:
+                    // the applicant just sees this message and waits to be contacted.
+                    if (isAccept) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedTextField(
+                            value = contactNote,
+                            onValueChange = { contactNote = it },
+                            label = { Text("Message to applicant (optional)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 2,
+                            maxLines = 4
+                        )
+                    }
+                }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    if (isAccept) onAcceptClick(applicant.id) else onRejectClick(applicant.id)
+                    if (isAccept) {
+                        onAcceptClick(applicant.id, contactNote.trim())
+                    } else {
+                        onRejectClick(applicant.id)
+                    }
                     Toast.makeText(
                         context,
                         if (isAccept) "${applicant.name} accepted" else "${applicant.name} rejected",
                         Toast.LENGTH_SHORT
                     ).show()
                     pendingAction = null
+                    contactNote = ""
                 }) {
                     Text(
                         if (isAccept) "Accept" else "Reject",
@@ -211,7 +241,10 @@ fun ManageApplicantsScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingAction = null }) {
+                TextButton(onClick = {
+                    pendingAction = null
+                    contactNote = ""
+                }) {
                     Text("Cancel", color = MutedText)
                 }
             }
@@ -260,9 +293,31 @@ private fun ApplicantCard(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(applicant.name, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = applicant.name,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = Color.Black
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "View Profile ›",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = DarkNavy, //
+                        modifier = Modifier
+                            .clickable {
+                                // TODO: Navigate to applicant profile page later
+                            }
+                            .padding(vertical = 4.dp, horizontal = 4.dp)
+                    )
+                }
+
                 StatusBadge(applicant.status)
             }
             Spacer(modifier = Modifier.height(4.dp))
