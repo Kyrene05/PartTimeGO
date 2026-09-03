@@ -39,6 +39,8 @@ import androidx.compose.ui.platform.LocalContext
 import android.content.Context
 import androidx.compose.material.icons.filled.Lock
 
+// companyName is supplied by the caller (read from the employer profile) and
+// is locked/read-only in this form — see the "Company Name (Locked)" field below.
 data class PostJobFormData(
     val title: String,
     val companyName: String,
@@ -61,7 +63,6 @@ private object PostJobDraftPrefs {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit()
             .putString("title", data.title)
-            .putString("companyName", data.companyName)
             .putString("category", data.category)
             .putString("salary", data.salary)
             .putString("startDate", data.startDate)
@@ -84,7 +85,7 @@ private object PostJobDraftPrefs {
 
         return PostJobFormData(
             title = title,
-            companyName = prefs.getString("companyName", "") ?: "",
+            companyName = "",
             category = prefs.getString("category", "Event Crew") ?: "Event Crew",
             salary = prefs.getString("salary", "") ?: "",
             startDate = prefs.getString("startDate", "") ?: "",
@@ -130,7 +131,7 @@ fun PostJobScreen(
     var requirements by remember { mutableStateOf(draft?.requirements ?: "") }
     var peopleNeeded by remember { mutableStateOf(draft?.peopleNeeded ?: 1) }
 
-    LaunchedEffect(title, companyName, category, salary, startDate, endDate, startTime, endTime, location, description, requirements, peopleNeeded) {
+    LaunchedEffect(title, category, salary, startDate, endDate, startTime, endTime, location, description, requirements, peopleNeeded) {
         PostJobDraftPrefs.save(
             context,
             PostJobFormData(
@@ -457,7 +458,7 @@ fun PostJobScreen(
                             locationError = null; descriptionError = null; requirementsError = null
 
                             if (title.isBlank()) titleError = "Job title is required"
-                            if (companyName.isBlank()) companyNameError = "Company name is required"
+                            if (companyName.isBlank()) companyNameError = "Company name is required. Set it in your Profile first."
                             if (salary.isBlank() || salary.toIntOrNull() == null || salary.toInt() <= 0) {
                                 salaryError = "Salary must be more than RM0"
                             }
