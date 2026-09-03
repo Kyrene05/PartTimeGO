@@ -47,6 +47,27 @@ class JobRepository(context: Context) {
         return jobDao.getJobsByEmployer(employerId)
     }
 
+    // Job seeker side
+    fun getAllJobs(): Flow<List<JobEntity>> {
+        return jobDao.getAllJobs()
+    }
+
+    suspend fun refreshAllJobsFromRemote() {
+        try {
+            val remoteJobs = postgrest["jobs"]
+                .select()
+                .decodeList<JobDto>()
+
+            jobDao.insertJobs(
+                remoteJobs.map {
+                    it.toEntity(syncStatus = "SYNCED")
+                }
+            )
+        } catch (e: Exception) {
+            // Keep existing Room data if network fails
+        }
+    }
+
     // Call this to refresh Room from Supabase in the background.
     // UI doesn't wait on this, it already has Room's data via the Flow above.
     suspend fun refreshJobsFromRemote(employerId: String) {

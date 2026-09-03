@@ -15,6 +15,16 @@ class JobViewModel(application: Application) : AndroidViewModel(application) {
         return repository.getJobsByEmployer(employerId)
     }
 
+    fun getAllJobs(): Flow<List<JobEntity>> {
+        return repository.getAllJobs()
+    }
+
+    fun refreshAllJobs() {
+        viewModelScope.launch {
+            repository.refreshAllJobsFromRemote()
+        }
+    }
+
     fun refreshJobs(employerId: String) {
         viewModelScope.launch {
             repository.refreshJobsFromRemote(employerId)

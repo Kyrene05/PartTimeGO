@@ -24,7 +24,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -44,11 +46,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.parttimego.data.model.Worker
+import com.example.parttimego.nav.JobSeekerNavBar
+import com.example.parttimego.nav.JobSeekerNavItem
 import com.example.parttimego.ui.theme.DarkText
 import com.example.parttimego.ui.theme.PartTimeGOTheme
 
 @Composable
-fun WorkerProfileScreen(
+fun JobSeekerProfileScreen(
     worker: Worker,
     onEditProfileClick: () -> Unit = {},
     onAvailabilityChange: (Boolean) -> Unit = {}
@@ -67,7 +71,7 @@ fun WorkerProfileScreen(
         ) {
 
             // Profile Header
-            WorkerProfileHeader(
+            JobSeekerProfileHeader(
                 worker = worker,
                 onEditProfileClick = onEditProfileClick
             )
@@ -99,9 +103,16 @@ fun WorkerProfileScreen(
                     item {
                         AvailabilityCard(
                             available = isAvailable,
+                            availableDays = worker.workerAvailabilityDay
+                                .split(",")
+                                .map { it.trim() }
+                                .filter { it.isNotEmpty() },
                             onAvailabilityChange = { value ->
                                 isAvailable = value
                                 onAvailabilityChange(value)
+                            },
+                            onAvailableDaysChange = {
+                                // Later, this can be sent to WorkerViewModel
                             }
                         )
                     }
@@ -159,12 +170,27 @@ fun WorkerProfileScreen(
                     }
                 }
             }
+            JobSeekerNavBar(
+                selectedItem = JobSeekerNavItem.PROFILE,
+                onHomeClick = {
+                    // Navigation to WorkerHomeScreen
+                },
+                onExploreClick = {
+                    // Navigation to WorkerExploreScreen
+                },
+                onAppliedClick = {
+                    // Navigation to WorkerAppliedScreen
+                },
+                onProfileClick = {
+                    // Already on Profile screen
+                }
+            )
         }
     }
 }
 
 @Composable
-private fun WorkerProfileHeader(
+private fun JobSeekerProfileHeader(
     worker: Worker,
     onEditProfileClick: () -> Unit
 ) {
@@ -187,7 +213,7 @@ private fun WorkerProfileHeader(
             Text(
                 text = "Profile",
                 color = Color.White,
-                fontSize = 13.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
 
@@ -204,19 +230,10 @@ private fun WorkerProfileHeader(
                 ) {
 
                     Icon(
-                        imageVector = Icons.Default.Edit,
+                        imageVector = Icons.Default.Settings,
                         contentDescription = "Edit Profile",
                         tint = Color.White,
-                        modifier = Modifier.size(9.dp)
-                    )
-
-                    Spacer(Modifier.width(3.dp))
-
-                    Text(
-                        text = "Edit Profile",
-                        color = Color.White,
-                        fontSize = 7.sp,
-                        fontWeight = FontWeight.Bold
+                        modifier = Modifier.size(15.dp)
                     )
                 }
             }
@@ -231,7 +248,7 @@ private fun WorkerProfileHeader(
             // Avatar
             Box(
                 modifier = Modifier
-                    .size(38.dp)
+                    .size(84.dp)
                     .clip(CircleShape)
                     .background(Color.White),
                 contentAlignment = Alignment.Center
@@ -243,18 +260,18 @@ private fun WorkerProfileHeader(
                         ?.uppercase()
                         ?: "A",
                     color = Color(0xFF262075),
-                    fontSize = 16.sp,
+                    fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
                 )
 
                 // Online indicator
                 Box(
                     modifier = Modifier
-                        .size(9.dp)
+                        .size(15.dp)
                         .clip(CircleShape)
                         .background(Color(0xFF118C20))
                         .border(
-                            width = 2.dp,
+                            width = 5.dp,
                             color = Color(0xFF262075),
                             shape = CircleShape
                         )
@@ -262,23 +279,57 @@ private fun WorkerProfileHeader(
                 )
             }
 
-            Spacer(Modifier.width(9.dp))
+            Spacer(Modifier.width(16.dp))
 
             Column {
                 Text(
                     text = worker.workerName,
                     color = Color.White,
-                    fontSize = 14.sp,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
 
                 Spacer(Modifier.height(2.dp))
 
-                Text(
-                    text = worker.workerPhoneNo,
-                    color = Color.White,
-                    fontSize = 7.sp
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Email,
+                        contentDescription = "email",
+                        tint = Color.White,
+                        modifier = Modifier.size(12.dp)
+                    )
+
+                    Spacer(Modifier.width(5.dp))
+
+                    Text(
+                        text = worker.workerEmail,
+                        color = Color.White,
+                        fontSize = 12.sp
+                    )
+                }
+
+                Spacer(Modifier.height(2.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Phone,
+                        contentDescription = "phone",
+                        tint = Color.White,
+                        modifier = Modifier.size(12.dp)
+                    )
+
+                    Spacer(Modifier.width(5.dp))
+
+                    Text(
+                        text = worker.workerPhoneNo,
+                        color = Color.White,
+                        fontSize = 12.sp
+                    )
+                }
             }
         }
     }
@@ -287,8 +338,24 @@ private fun WorkerProfileHeader(
 @Composable
 private fun AvailabilityCard(
     available: Boolean,
-    onAvailabilityChange: (Boolean) -> Unit
+    availableDays: List<String>,
+    onAvailabilityChange: (Boolean) -> Unit,
+    onAvailableDaysChange: (List<String>) -> Unit
 ) {
+    var selectedDays by remember {
+        mutableStateOf(availableDays)
+    }
+
+    val days = listOf(
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+    )
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -300,13 +367,12 @@ private fun AvailabilityCard(
     ) {
 
         Row(
-            modifier = Modifier.padding(12.dp, 10.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.padding(12.dp, 10.dp)
         ) {
 
             Box(
                 modifier = Modifier
-                    .size(28.dp)
+                    .size(48.dp)
                     .clip(RoundedCornerShape(7.dp))
                     .background(Color(0xFF118C20).copy(alpha = 0.5f)),
                 contentAlignment = Alignment.Center
@@ -316,7 +382,7 @@ private fun AvailabilityCard(
                     imageVector = Icons.Default.CalendarMonth,
                     contentDescription = null,
                     tint = Color(0xFF4D8C62),
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(36.dp)
                 )
             }
 
@@ -326,16 +392,29 @@ private fun AvailabilityCard(
                 Modifier.weight(1f)
             ) {
                 Text(
-                    text = "Available",
+                    text = if (available) {
+                        "Available Everyday"
+                    } else {
+                        getAvailabilityText(selectedDays)
+                    },
                     color = Color.Black,
-                    fontSize = 12.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
 
             Switch(
                 checked = available,
-                onCheckedChange = onAvailabilityChange,
+                onCheckedChange = { value ->
+
+                    onAvailabilityChange(value)
+
+                    // If user turns ON, they are available every day
+                    if (value) {
+                        selectedDays = emptyList()
+                        onAvailableDaysChange(emptyList())
+                    }
+                },
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
                     checkedTrackColor = Color(0xFF118C20),
@@ -344,8 +423,49 @@ private fun AvailabilityCard(
                 )
             )
         }
+
+        // Only show day selection when toggle is OFF
+        if (!available){
+            Spacer(Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ){
+                days.forEach { day ->
+                    val shortDay = when (day) {
+                        "Monday" -> "M"
+                        "Tuesday" -> "T"
+                        "Wednesday" -> "W"
+                        "Thursday" -> "T"
+                        "Friday" -> "F"
+                        "Saturday" -> "S"
+                        else -> "S"
+                    }
+                    DayButton(
+                        day = shortDay,
+                        selected = day in selectedDays,
+                        onClick = {
+
+                            selectedDays =
+                                if (day in selectedDays) {
+                                    selectedDays - day
+                                } else {
+                                    selectedDays + day
+                                }
+
+                            onAvailableDaysChange(
+                                selectedDays
+                            )
+                        }
+                    )
+                }
+            }
+        }
     }
 }
+
+
 
 @Composable
 private fun ProfileSectionTitle(
@@ -354,7 +474,7 @@ private fun ProfileSectionTitle(
     Text(
         text = title,
         color = Color.Black,
-        fontSize = 11.sp,
+        fontSize = 16.sp,
         fontWeight = FontWeight.Bold
     )
 }
@@ -401,7 +521,7 @@ private fun FlowChipRow(
                         imageVector = Icons.Default.Add,
                         contentDescription = "Add Skills",
                         tint = Color.Black,
-                        modifier = Modifier.size(13.dp)
+                        modifier = Modifier.size(14.dp)
                     )
                 }
             }
@@ -437,167 +557,12 @@ private fun ProfileChip(
         Text(
             text = text,
             color = textColor,
-            fontSize = 7.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(8.dp, 5.dp)
         )
     }
 }
-
-//@Composable
-//private fun PreferredLocationSection(
-//    preferredState: String,
-//    preferredLocations: String
-//) {
-//
-//    var expanded by remember {
-//        mutableStateOf(false)
-//    }
-//
-//    val selectedAreas = preferredLocations
-//        .split(",")
-//        .map { it.trim() }
-//        .filter { it.isNotEmpty() }
-//
-//    val availableAreas = LocationData.getAreas(preferredState)
-//
-//    Column(
-//        modifier = Modifier.fillMaxWidth()
-//    ) {
-//
-//        // Selected State
-//        Surface(
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .clickable {
-//                    expanded = !expanded
-//                },
-//            shape = RoundedCornerShape(9.dp),
-//            color = Color.White,
-//            border = BorderStroke(
-//                width = 1.dp,
-//                color = Color(0xFFD0D0CC)
-//            )
-//        ) {
-//
-//            Row(
-//                modifier = Modifier.padding(
-//                    horizontal = 12.dp,
-//                    vertical = 10.dp
-//                ),
-//                verticalAlignment = Alignment.CenterVertically
-//            ) {
-//
-//                Column(
-//                    modifier = Modifier.weight(1f)
-//                ) {
-//
-//                    Text(
-//                        text = "State",
-//                        fontSize = 7.sp,
-//                        color = Color.Gray
-//                    )
-//
-//                    Spacer(
-//                        modifier = Modifier.height(2.dp)
-//                    )
-//
-//                    Text(
-//                        text = if (preferredState.isBlank()) {
-//                            "No preferred state selected"
-//                        } else {
-//                            preferredState
-//                        },
-//                        fontSize = 10.sp,
-//                        fontWeight = FontWeight.Bold,
-//                        color = Color.Black
-//                    )
-//                }
-//
-//                Icon(
-//                    imageVector = if (expanded) {
-//                        Icons.Default.KeyboardArrowUp
-//                    } else {
-//                        Icons.Default.KeyboardArrowDown
-//                    },
-//                    contentDescription = "Show Areas",
-//                    tint = Color.Black,
-//                    modifier = Modifier.size(18.dp)
-//                )
-//            }
-//        }
-//
-//        Spacer(
-//            modifier = Modifier.height(8.dp)
-//        )
-//
-//        // Display selected locations as chips
-//        if (selectedAreas.isNotEmpty()) {
-//
-//            Text(
-//                text = "Selected Areas",
-//                fontSize = 8.sp,
-//                fontWeight = FontWeight.Bold,
-//                color = Color.Black
-//            )
-//
-//            Spacer(
-//                modifier = Modifier.height(6.dp)
-//            )
-//
-//            FlowChipRow(
-//                chips = selectedAreas,
-//                chipType = ChipType.GRAY,
-//                showAddButton = false
-//            )
-//        }
-//
-//        // Automatically generated areas
-//        if (expanded) {
-//
-//            Spacer(
-//                modifier = Modifier.height(10.dp)
-//            )
-//
-//            Text(
-//                text = "Available Areas in $preferredState",
-//                fontSize = 8.sp,
-//                fontWeight = FontWeight.Bold,
-//                color = Color.Black
-//            )
-//
-//            Spacer(
-//                modifier = Modifier.height(6.dp)
-//            )
-//
-//            if (availableAreas.isEmpty()) {
-//
-//                Text(
-//                    text = "No area data available.",
-//                    fontSize = 8.sp,
-//                    color = Color.Gray
-//                )
-//
-//            } else {
-//
-//                Column(
-//                    verticalArrangement = Arrangement.spacedBy(6.dp)
-//                ) {
-//
-//                    availableAreas.forEach { area ->
-//
-//                        val isSelected = area in selectedAreas
-//
-//                        AreaOption(
-//                            area = area,
-//                            selected = isSelected
-//                        )
-//                    }
-//                }
-//            }
-//        }
-//    }
-//}
 
 @Composable
 private fun AreaOption(
@@ -634,14 +599,14 @@ private fun AreaOption(
             Text(
                 text = area,
                 modifier = Modifier.weight(1f),
-                fontSize = 9.sp,
+                fontSize = 14.sp,
                 color = Color.Black
             )
 
             if (selected) {
                 Text(
                     text = "Selected",
-                    fontSize = 7.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF262075)
                 )
@@ -671,7 +636,7 @@ private fun GigExperienceCard(
             Text(
                 text = "Work History",
                 color = Color.Black,
-                fontSize = 11.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
 
@@ -684,24 +649,82 @@ private fun GigExperienceCard(
                     workHistory
                 },
                 color = Color.Black,
-                fontSize = 8.sp,
+                fontSize = 14.sp,
                 lineHeight = 12.sp
             )
         }
     }
 }
 
+@Composable
+fun DayButton(
+    day: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .size(24.dp)
+            .clickable {
+                onClick()
+            },
+        shape = CircleShape,
+        color = if (selected) {
+            Color(0xFF262075)
+        } else {
+            Color.White
+        },
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (selected) {
+                Color(0xFF262075)
+            } else {
+                Color(0xFFD0D0CC)
+            }
+        )
+    ) {
+
+        Box(
+            contentAlignment = Alignment.Center
+        ) {
+
+            Text(
+                text = day,
+                color = if (selected) {
+                    Color.White
+                } else {
+                    Color.Black
+                },
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun getAvailabilityText(
+    selectedDays: List<String>
+): String {
+    if(selectedDays.isEmpty()){
+        return "Select available days"
+    }
+    return "Every" + selectedDays.joinToString(", ")
+}
+
 @Preview(showBackground = true)
 @Composable
-private fun WorkerProfileScreenPreview(){
+private fun JobSeekerProfileScreenPreview(){
     PartTimeGOTheme() {
-        WorkerProfileScreen(
+        JobSeekerProfileScreen(
             worker = Worker(
                 workerId = "W001",
                 userId = "U001",
                 workerName = "Ahmad",
                 workerPhoneNo = "0123456789",
+                workerEmail = "ahmad@gmail.com",
                 workerAvailability = true,
+                workerAvailabilityDay = "Friday",
                 workerSkills = "Event Crew, Customer Service",
                 workerPreferredJobCategories = "F&B, Retail",
                 workerPreferredState = "Penang",

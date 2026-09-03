@@ -5,7 +5,7 @@ import com.example.parttimego.data.model.Worker
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 
-class WorkerRepository(
+class JobSeekerRepository(
     private val supabase: SupabaseClient
 ){
     // make sure the userId is match with workerId

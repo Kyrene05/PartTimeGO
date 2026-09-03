@@ -94,10 +94,31 @@ class AuthViewModel : ViewModel() {
                 // Also write to the public "profiles" table so other users
                 // (e.g. an employer viewing applicants) can look up this name.
                 val userId = SupabaseClient.client.auth.currentUserOrNull()?.id
+
                 if (userId != null) {
+
+                    // Insert into profiles
                     SupabaseClient.client.postgrest["profiles"].insert(
-                        mapOf("id" to userId, "full_name" to fullName, "role" to selectedRole)
+                        mapOf(
+                            "id" to userId,
+                            "full_name" to fullName,
+                            "role" to selectedRole
+                        )
                     )
+
+                    // Create worker profile for Job Seeker
+                    if (selectedRole == "job_seeker") {
+                        SupabaseClient.client.postgrest["worker"].insert(
+                            mapOf(
+                                "worker_id" to userId,
+                                "worker_name" to fullName,
+                                "worker_availability" to false,
+                                "worker_skills" to "",
+                                "worker_preferredLocation" to "",
+                                "worker_workHistory" to ""
+                            )
+                        )
+                    }
                 }
 
                 authState = AuthState.Success("Registered successfully as ${roleLabel(selectedRole)}!")
