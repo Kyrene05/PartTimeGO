@@ -80,7 +80,7 @@ private val TagRed = Color(0xFFE53935)
 
 @Composable
 fun JobSeekerHomeScreen(
-    worker: Worker,
+    worker: Worker? = null,
     onGigClick: (String) -> Unit = {},
     onExploreClick: () -> Unit = {},
     onViewTodayGigsClick: () -> Unit = onExploreClick,
@@ -99,7 +99,7 @@ fun JobSeekerHomeScreen(
 
     JobSeekerHomeContent(
         jobs = jobs,
-        userName = worker.workerName,
+        userName = worker?.workerName?: "Job Seeker",
         onGigClick = onGigClick,
         onExploreClick = onExploreClick,
         onViewTodayGigsClick = onViewTodayGigsClick,
