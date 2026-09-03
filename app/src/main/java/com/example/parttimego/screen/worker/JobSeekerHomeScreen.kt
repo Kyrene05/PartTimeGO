@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.parttimego.data.SupabaseClient
 import com.example.parttimego.data.local.JobEntity
+import com.example.parttimego.data.model.Worker
 import com.example.parttimego.data.repository.ApplicationRepository
 import com.example.parttimego.nav.JobSeekerNavBar
 import com.example.parttimego.nav.JobSeekerNavItem
@@ -79,7 +80,7 @@ private val TagRed = Color(0xFFE53935)
 
 @Composable
 fun JobSeekerHomeScreen(
-    userName: String = "User",
+    worker: Worker,
     onGigClick: (String) -> Unit = {},
     onExploreClick: () -> Unit = {},
     onViewTodayGigsClick: () -> Unit = onExploreClick,
@@ -98,7 +99,7 @@ fun JobSeekerHomeScreen(
 
     JobSeekerHomeContent(
         jobs = jobs,
-        userName = userName,
+        userName = worker.workerName,
         onGigClick = onGigClick,
         onExploreClick = onExploreClick,
         onViewTodayGigsClick = onViewTodayGigsClick,
@@ -776,14 +777,11 @@ private fun TodayOpportunityCard(
     onClick: () -> Unit
 ) {
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .alpha(if (enabled) 1f else 0.6f),
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = AccentGreen
-        )
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Black),
+        color = Color.White
     ) {
 
         Row(
@@ -870,35 +868,44 @@ private fun CategoryGrid(
         "Other"
     )
 
-    Column(
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Black),
+        color = Color.White
+    ){
+        Column(
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
 
-        categories.chunked(2).forEach { rowCategories ->
+            categories.chunked(2).forEach { rowCategories ->
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
 
-                rowCategories.forEach { category ->
+                    rowCategories.forEach { category ->
 
-                    CategoryBox(
-                        title = category,
-                        count = categoryCounts[category] ?: 0,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            onCategoryClick(category)
-                        }
-                    )
-                }
+                        CategoryBox(
+                            title = category,
+                            count = categoryCounts[category] ?: 0,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                onCategoryClick(category)
+                            }
+                        )
+                    }
 
-                if (rowCategories.size < 2) {
-                    Spacer(modifier = Modifier.weight(1f))
+                    if (rowCategories.size < 2) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
                 }
             }
         }
     }
+
+
 }
 
 
@@ -953,22 +960,12 @@ private fun JobSeekerJobCard(
     onClick: () -> Unit,
     onApplyClick: () -> Unit
 ) {
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable {
-                onClick()
-            },
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp
-        )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Black),
+        color = Color.White
     ) {
-
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
@@ -1116,11 +1113,11 @@ private fun JobTagBadge(tag: String?) {
 
 @Composable
 private fun EmptyJobsCard() {
-
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        color = Color(0xFFF5F5F5)
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Black),
+        color = Color.White
     ) {
 
         Column(

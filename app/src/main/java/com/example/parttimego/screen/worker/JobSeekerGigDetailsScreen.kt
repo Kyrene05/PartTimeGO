@@ -29,6 +29,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -666,17 +667,11 @@ private fun InfoBox(
     value: String
 ) {
 
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(
-            containerColor =
-                Color(0xFFF8F8FC)
-        ),
-        elevation =
-            CardDefaults.cardElevation(
-                defaultElevation = 0.dp
-            )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Black),
+        color = Color.White
     ) {
 
         Column(

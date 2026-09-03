@@ -48,13 +48,15 @@ import androidx.compose.ui.unit.sp
 import com.example.parttimego.data.model.Worker
 import com.example.parttimego.nav.JobSeekerNavBar
 import com.example.parttimego.nav.JobSeekerNavItem
-import com.example.parttimego.ui.theme.DarkText
 import com.example.parttimego.ui.theme.PartTimeGOTheme
 
 @Composable
 fun JobSeekerProfileScreen(
     worker: Worker,
     onEditProfileClick: () -> Unit = {},
+    onHomeClick: () -> Unit = {},
+    onExploreClick: () -> Unit = {},
+    onAppliedClick: () -> Unit = {},
     onAvailabilityChange: (Boolean) -> Unit = {}
 ) {
     var isAvailable by remember(worker.workerAvailability) {
@@ -172,15 +174,9 @@ fun JobSeekerProfileScreen(
             }
             JobSeekerNavBar(
                 selectedItem = JobSeekerNavItem.PROFILE,
-                onHomeClick = {
-                    // Navigation to WorkerHomeScreen
-                },
-                onExploreClick = {
-                    // Navigation to WorkerExploreScreen
-                },
-                onAppliedClick = {
-                    // Navigation to WorkerAppliedScreen
-                },
+                onHomeClick = onHomeClick,
+                onExploreClick = onExploreClick,
+                onAppliedClick = onAppliedClick,
                 onProfileClick = {
                     // Already on Profile screen
                 }
@@ -358,12 +354,9 @@ private fun AvailabilityCard(
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = Color.White,
-        border = BorderStroke(
-            width = 1.dp,
-            color = DarkText
-        )
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color.Black),
+        color = Color.White
     ) {
 
         Row(
@@ -621,12 +614,9 @@ private fun GigExperienceCard(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(9.dp),
-        color = Color.White,
-        border = BorderStroke(
-            width = 1.dp,
-            color = Color.Black
-        )
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color.Black),
+        color = Color.White
     ) {
 
         Column(
@@ -712,27 +702,3 @@ private fun getAvailabilityText(
     return "Every" + selectedDays.joinToString(", ")
 }
 
-@Preview(showBackground = true)
-@Composable
-private fun JobSeekerProfileScreenPreview(){
-    PartTimeGOTheme() {
-        JobSeekerProfileScreen(
-            worker = Worker(
-                workerId = "W001",
-                userId = "U001",
-                workerName = "Ahmad",
-                workerPhoneNo = "0123456789",
-                workerEmail = "ahmad@gmail.com",
-                workerAvailability = true,
-                workerAvailabilityDay = "Friday",
-                workerSkills = "Event Crew, Customer Service",
-                workerPreferredJobCategories = "F&B, Retail",
-                workerPreferredState = "Penang",
-                workerPreferredLocation = "Georgetown",
-                workerWorkHistory = "Worked as event crew for 2 years",
-                workerCreatedAt = "2026-08-26T10:00:00",
-                workerUpdatedAt = "2026-08-26T10:00:00"
-            )
-        )
-    }
-}

@@ -685,9 +685,9 @@ private fun GigListingCard(
             .clickable {
                 onGigClick()
             },
-        shape = RoundedCornerShape(14.dp),
-        color = Color.White,
-        shadowElevation = 2.dp
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Black),
+        color = Color.White
     ) {
 
         Column(

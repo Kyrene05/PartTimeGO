@@ -20,6 +20,7 @@ import androidx.navigation.navArgument
 import com.example.parttimego.data.JobPost
 import com.example.parttimego.data.SupabaseClient
 import com.example.parttimego.data.local.JobEntity
+import com.example.parttimego.data.model.Worker
 import com.example.parttimego.data.repository.ApplicationRepository
 import com.example.parttimego.screen.ApplicantStatus
 import com.example.parttimego.screen.ApplicantUiModel
@@ -43,6 +44,7 @@ import com.example.parttimego.screen.worker.JobSeekerAppliedScreen
 import com.example.parttimego.screen.worker.JobSeekerGigDetailScreen
 import com.example.parttimego.screen.worker.JobSeekerGigListingScreen
 import com.example.parttimego.screen.worker.JobSeekerHomeScreen
+import com.example.parttimego.screen.worker.JobSeekerProfileScreen
 import com.example.parttimego.viewmodel.AuthState
 import com.example.parttimego.viewmodel.AuthViewModel
 import com.example.parttimego.viewmodel.EmployerProfileViewModel
@@ -599,28 +601,67 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
 
         // TODO: Job Seeker home
         composable(Screen.JobSeekerHome.route) {
-            JobSeekerHomeScreen(
-                onGigClick = { jobId ->
-                    navController.navigate(
-                        Screen.JobSeekerGigDetail.createRoute(jobId)
-                    )
-                },
-                onExploreClick = {
-                    navController.navigate(Screen.JobSeekerGigListing.route) {
-                        launchSingleTop = true
-                    }
-                },
-                onAppliedClick = {
-                    navController.navigate(Screen.JobSeekerApplied.route)
-                },
-                onProfileClick = {
-                    navController.navigate(
-                        Screen.JobSeekerProfile.route
-                    ) {
-                        launchSingleTop = true
+
+            val currentUserId =
+                SupabaseClient.client.auth.currentUserOrNull()?.id
+
+            var worker by remember {
+                mutableStateOf<Worker?>(null)
+            }
+
+            LaunchedEffect(currentUserId) {
+                if (currentUserId != null) {
+                    try {
+                        worker = SupabaseClient.client
+                            .postgrest["worker"]
+                            .select {
+                                filter {
+                                    eq("user_id", currentUserId)
+                                }
+                            }
+                            .decodeSingleOrNull<Worker>()
+                    } catch (e: Exception) {
+                        worker = null
                     }
                 }
-            )
+            }
+
+            if (worker != null) {
+
+                JobSeekerHomeScreen(
+
+                    worker = worker!!,
+
+                    onGigClick = { jobId ->
+                        navController.navigate(
+                            Screen.JobSeekerGigDetail.createRoute(jobId)
+                        )
+                    },
+
+                    onExploreClick = {
+                        navController.navigate(
+                            Screen.JobSeekerGigListing.route
+                        ) {
+                            launchSingleTop = true
+                        }
+                    },
+
+                    onAppliedClick = {
+                        navController.navigate(
+                            Screen.JobSeekerApplied.route
+                        )
+                    },
+
+                    onProfileClick = {
+                        navController.navigate(
+                            Screen.JobSeekerProfile.route
+                        )
+                    }
+                )
+
+            } else {
+                Text("Loading...")
+            }
         }
 
         composable(Screen.JobSeekerGigListing.route) {
@@ -700,9 +741,6 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             route = Screen.JobSeekerApplied.route
         ) {
             JobSeekerAppliedScreen(
-                onBackClick = {
-                    navController.popBackStack()
-                },
                 onHomeClick = {
                     navController.navigate(
                         Screen.JobSeekerHome.route
@@ -731,8 +769,90 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
         composable(
             route = Screen.JobSeekerProfile.route
         ) {
-            // Profile screen will be connected to the current Worker data
-            // in the next part.
+            val currentUserId =
+                SupabaseClient.client.auth.currentUserOrNull()?.id
+
+            var worker by remember {
+                mutableStateOf<Worker?>(null)
+            }
+
+            var isLoading by remember {
+                mutableStateOf(true)
+            }
+
+            LaunchedEffect(currentUserId) {
+                if (currentUserId != null) {
+                    try {
+                        worker = SupabaseClient.client
+                            .postgrest["worker"]
+                            .select {
+                                filter {
+                                    eq("user_id", currentUserId)
+                                }
+                            }
+                            .decodeSingleOrNull<Worker>()
+                    } catch (e: Exception) {
+                        worker = null
+                    }
+
+                    isLoading = false
+                } else {
+                    isLoading = false
+                }
+            }
+
+            when {
+                isLoading -> {
+                    Text("Loading profile...")
+                }
+
+                worker != null -> {
+                    JobSeekerProfileScreen(
+                        worker = worker!!,
+
+                        onEditProfileClick = {
+                            navController.navigate(
+                                Screen.EditJobSeekerProfile.route
+                            )
+                        },
+
+                        onHomeClick = {
+                            navController.navigate(
+                                Screen.JobSeekerHome.route
+                            ) {
+                                popUpTo(Screen.JobSeekerHome.route) {
+                                    inclusive = false
+                                }
+                                launchSingleTop = true
+                            }
+                        },
+
+                        onExploreClick = {
+                            navController.navigate(
+                                Screen.JobSeekerGigListing.route
+                            ) {
+                                launchSingleTop = true
+                            }
+                        },
+
+                        onAppliedClick = {
+                            navController.navigate(
+                                Screen.JobSeekerApplied.route
+                            ) {
+                                launchSingleTop = true
+                            }
+                        },
+
+                        onAvailabilityChange = { available ->
+                            // We can connect this to Supabase later
+                        }
+                    )
+                }
+
+                else -> {
+                    Text("Unable to load profile")
+                }
+            }
         }
     }
 }
