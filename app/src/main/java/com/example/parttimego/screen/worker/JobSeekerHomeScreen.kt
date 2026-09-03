@@ -97,23 +97,55 @@ fun JobSeekerHomeScreen(
         jobViewModel.refreshAllJobs()
     }
 
-    var userName by remember { mutableStateOf("User") }
+    var userName by remember {
+        mutableStateOf("User")
+    }
 
     LaunchedEffect(Unit) {
-        val currentUserId = SupabaseClient.client.auth.currentUserOrNull()?.id
 
+        val currentUser =
+            SupabaseClient.client.auth.currentUserOrNull()
+
+        val currentUserId =
+            currentUser?.id
+
+        // get name
+        val authUserName =
+            currentUser
+                ?.userMetadata
+                ?.get("full_name")
+                ?.toString()
+                ?.trim('"')
+
+        if (!authUserName.isNullOrBlank()) {
+            userName = authUserName
+        }
+
+        // get name from worker table
         if (currentUserId != null) {
-            try {
-                // Fetch from 'worker' table
-                val worker = SupabaseClient.client
-                    .postgrest["worker"]
-                    .select {
-                        filter { eq("user_id", currentUserId) }
-                    }
-                    .decodeSingleOrNull<Worker>()
 
-                // Use worker's full name, or fallback to "User"
-                userName = worker?.workerName ?: "User"
+            try {
+
+                val worker =
+                    SupabaseClient.client
+                        .postgrest["worker"]
+                        .select {
+                            filter {
+                                eq(
+                                    "user_id",
+                                    currentUserId
+                                )
+                            }
+                        }
+                        .decodeSingleOrNull<Worker>()
+
+                if (
+                    worker != null &&
+                    worker.workerName.isNotBlank()
+                ) {
+                    userName = worker.workerName
+                }
+
             } catch (e: Exception) {
                 e.printStackTrace()
             }

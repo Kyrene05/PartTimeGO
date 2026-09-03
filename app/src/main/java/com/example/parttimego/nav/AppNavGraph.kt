@@ -146,7 +146,8 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             SplashScreen(
                 onNavigateToLogin = {
                     coroutineScope.launch {
-                        val status = SupabaseClient.client.auth.sessionStatus.first { it !is SessionStatus.Initializing }
+                        val status =
+                            SupabaseClient.client.auth.sessionStatus.first { it !is SessionStatus.Initializing }
 
                         val destination = if (status is SessionStatus.Authenticated) {
                             try {
@@ -293,7 +294,8 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             LaunchedEffect(employerId) {
                 if (employerId != null) {
                     jobViewModel.refreshJobs(employerId)
-                    totalApplicantsCount = applicationRepository.getApplicationCountForEmployer(employerId)
+                    totalApplicantsCount =
+                        applicationRepository.getApplicationCountForEmployer(employerId)
                     pendingReviewCount = applicationRepository.getPendingReviewCount(employerId)
                     thisWeekHiresCount = applicationRepository.getThisWeekHiresCount(employerId)
                 }
@@ -307,7 +309,8 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             var selectedStatus by remember { mutableStateOf<JobStatusFilter?>(null) }
 
             val filteredJobs = jobs.filter { job ->
-                val matchesSearch = searchQuery.isBlank() || job.title.contains(searchQuery, ignoreCase = true)
+                val matchesSearch =
+                    searchQuery.isBlank() || job.title.contains(searchQuery, ignoreCase = true)
                 val matchesCategory = selectedCategory == null || job.category == selectedCategory
                 val matchesStatus = selectedStatus == null || job.toStatusFilter() == selectedStatus
                 matchesSearch && matchesCategory && matchesStatus
@@ -325,7 +328,13 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                 onCategorySelected = { selectedCategory = it },
                 selectedStatus = selectedStatus,
                 onStatusSelected = { selectedStatus = it },
-                onJobDetailsClick = { jobId -> navController.navigate(Screen.Details.createRoute(jobId)) },
+                onJobDetailsClick = { jobId ->
+                    navController.navigate(
+                        Screen.Details.createRoute(
+                            jobId
+                        )
+                    )
+                },
                 onTotalApplicantsClick = { navController.navigate(Screen.ManageApplicants.route) },
                 onDashboardTabClick = { },
                 onPostTabClick = { navController.navigate(Screen.PostJob.route) },
@@ -748,8 +757,14 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
         composable(
             route = Screen.JobSeekerProfile.route
         ) {
+
+            val currentUser =
+                SupabaseClient.client
+                    .auth
+                    .currentUserOrNull()
+
             val currentUserId =
-                SupabaseClient.client.auth.currentUserOrNull()?.id
+                currentUser?.id
 
             var worker by remember {
                 mutableStateOf<Worker?>(null)
@@ -760,32 +775,140 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             }
 
             LaunchedEffect(currentUserId) {
+
+                isLoading = true
+
                 if (currentUserId != null) {
+
                     try {
-                        worker = SupabaseClient.client
-                            .postgrest["worker"]
-                            .select {
-                                filter {
-                                    eq("user_id", currentUserId)
+
+                        // FIRST: TRY TO GET EXISTING WORKER PROFILE
+                        worker =
+                            SupabaseClient.client
+                                .postgrest["worker"]
+                                .select {
+                                    filter {
+                                        eq(
+                                            "user_id",
+                                            currentUserId
+                                        )
+                                    }
                                 }
-                            }
-                            .decodeSingleOrNull<Worker>()
+                                .decodeSingleOrNull<Worker>()
+
+                        // CHANGE: IF OLD USER DOES NOT HAVE WORKER PROFILE,
+                        // CREATE ONE AUTOMATICALLY
+                        if (worker == null) {
+
+                            val fullName =
+                                currentUser
+                                    .userMetadata
+                                    ?.get("full_name")
+                                    ?.toString()
+                                    ?.trim('"')
+                                    ?: "User"
+
+                            val email =
+                                currentUser.email
+                                    ?: ""
+
+                            val now =
+                                java.time.OffsetDateTime
+                                    .now()
+                                    .toString()
+
+                            SupabaseClient.client
+                                .postgrest["worker"]
+                                .insert(
+                                    mapOf(
+                                        "worker_id" to currentUserId,
+                                        "user_id" to currentUserId,
+                                        "worker_name" to fullName,
+                                        "worker_phoneNo" to "",
+                                        "worker_email" to email,
+                                        "worker_availability" to false,
+                                        "worker_availabilityDay" to "",
+                                        "worker_preferredJobCategories" to "",
+                                        "worker_skills" to "",
+                                        "worker_preferredState" to "",
+                                        "worker_preferredLocation" to "",
+                                        "worker_workHistory" to "",
+                                        "worker_createdAt" to now,
+                                        "worker_updatedAt" to now
+                                    )
+                                )
+
+                            // GET THE NEWLY CREATED PROFILE
+                            worker =
+                                SupabaseClient.client
+                                    .postgrest["worker"]
+                                    .select {
+                                        filter {
+                                            eq(
+                                                "user_id",
+                                                currentUserId
+                                            )
+                                        }
+                                    }
+                                    .decodeSingleOrNull<Worker>()
+                        }
+
                     } catch (e: Exception) {
-                        worker = null
+
+                        e.printStackTrace()
+
+                        // CHANGE: FALLBACK PROFILE SO SCREEN WILL NOT CRASH
+                        val fullName =
+                            currentUser
+                                ?.userMetadata
+                                ?.get("full_name")
+                                ?.toString()
+                                ?.trim('"')
+                                ?: "User"
+
+                        val email =
+                            currentUser
+                                ?.email
+                                ?: ""
+
+                        worker =
+                            Worker(
+                                workerId = currentUserId,
+                                userId = currentUserId,
+                                workerName = fullName,
+                                workerPhoneNo = "",
+                                workerEmail = email,
+                                workerAvailability = false,
+                                workerAvailabilityDay = "",
+                                workerPreferredJobCategories = "",
+                                workerSkills = "",
+                                workerPreferredState = "",
+                                workerPreferredLocation = "",
+                                workerWorkHistory = "",
+                                workerCreatedAt = "",
+                                workerUpdatedAt = ""
+                            )
                     }
 
-                    isLoading = false
                 } else {
-                    isLoading = false
+
+                    worker = null
                 }
+
+                isLoading = false
             }
 
             when {
+
                 isLoading -> {
-                    Text("Loading profile...")
+
+                    Text(
+                        text = "Loading profile..."
+                    )
                 }
 
                 worker != null -> {
+
                     JobSeekerProfileScreen(
                         worker = worker!!,
 
@@ -795,18 +918,31 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                             )
                         },
 
+                        onAvailabilityChange = { available ->
+
+                            worker =
+                                worker?.copy(
+                                    workerAvailability = available
+                                )
+                        },
+
                         onHomeClick = {
+
                             navController.navigate(
                                 Screen.JobSeekerHome.route
                             ) {
-                                popUpTo(Screen.JobSeekerHome.route) {
+                                popUpTo(
+                                    Screen.JobSeekerHome.route
+                                ) {
                                     inclusive = false
                                 }
+
                                 launchSingleTop = true
                             }
                         },
 
                         onExploreClick = {
+
                             navController.navigate(
                                 Screen.JobSeekerGigListing.route
                             ) {
@@ -815,28 +951,29 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                         },
 
                         onAppliedClick = {
+
                             navController.navigate(
                                 Screen.JobSeekerApplied.route
                             ) {
                                 launchSingleTop = true
                             }
-                        },
-
-                        onAvailabilityChange = { available ->
-                            if (currentUserId != null) {
-
-                            worker = worker?.copy(
-                                workerAvailability = available
-                            )
-                        }
                         }
                     )
                 }
 
                 else -> {
-                    Text("Unable to load profile")
+
+                    Text(
+                        text = "Unable to load profile"
+                    )
                 }
             }
+        }
+
+        composable(
+            route = Screen.EditJobSeekerProfile.route
+        ) {
+            Text("Edit Job Seeker Profile")
         }
     }
 }
