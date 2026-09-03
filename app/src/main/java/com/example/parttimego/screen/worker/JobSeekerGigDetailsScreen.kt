@@ -1,0 +1,848 @@
+package com.example.parttimego.screen.worker
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.parttimego.data.local.JobEntity
+import com.example.parttimego.data.repository.ApplicationRepository
+import com.example.parttimego.data.SupabaseClient
+import com.example.parttimego.nav.JobSeekerNavBar
+import com.example.parttimego.nav.JobSeekerNavItem
+import com.example.parttimego.viewmodel.JobViewModel
+import io.github.jan.supabase.auth.auth
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+
+private val Purple = Color(0xFF7B61FF)
+private val LightPurple = Color(0xFFF1EEFF)
+private val Green = Color(0xFF22A447)
+private val LightBlue = Color(0xFFEAF4FF)
+private val GreyText = Color(0xFF777777)
+private val DarkText = Color(0xFF222222)
+private val Red = Color(0xFFE53935)
+private val LightRed = Color(0xFFFFEBEE)
+
+@Composable
+fun JobSeekerGigDetailScreen(
+    jobId: String,
+    onBackClick: () -> Unit = {},
+    onHomeClick: () -> Unit = {},
+    onExploreClick: () -> Unit = {},
+    onAppliedClick: () -> Unit = {},
+    onProfileClick: () -> Unit = {},
+    jobViewModel: JobViewModel = viewModel()
+) {
+
+    val scope = rememberCoroutineScope()
+
+    var job by remember {
+        mutableStateOf<JobEntity?>(null)
+    }
+
+    var isLoading by remember {
+        mutableStateOf(true)
+    }
+
+    var isBookmarked by remember {
+        mutableStateOf(false)
+    }
+
+    var applicationMessage by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    // ---------------------------------------------------------
+    // LOAD JOB
+    // ---------------------------------------------------------
+
+    LaunchedEffect(jobId) {
+
+        isLoading = true
+
+        jobViewModel.getAllJobs().collect { jobs ->
+
+            job = jobs.firstOrNull {
+                it.id == jobId
+            }
+
+            if (job != null) {
+                isLoading = false
+                return@collect
+            }
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+    ) {
+
+        // -----------------------------------------------------
+        // HEADER
+        // -----------------------------------------------------
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Purple)
+                .padding(
+                    top = 32.dp,
+                    bottom = 18.dp
+                )
+        ) {
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                IconButton(
+                    onClick = onBackClick
+                ) {
+
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White
+                    )
+                }
+
+                Text(
+                    text = "Gig Details",
+                    modifier = Modifier.weight(1f),
+                    color = Color.White,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                IconButton(
+                    onClick = {
+                        isBookmarked = !isBookmarked
+                    },
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(LightBlue)
+                ) {
+
+                    Icon(
+                        imageVector =
+                            if (isBookmarked)
+                                Icons.Default.Favorite
+                            else
+                                Icons.Default.FavoriteBorder,
+                        contentDescription = "Bookmark",
+                        tint = Purple
+                    )
+                }
+            }
+        }
+
+        // -----------------------------------------------------
+        // CONTENT
+        // -----------------------------------------------------
+
+        if (isLoading) {
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+
+                Text(
+                    text = "Loading gig...",
+                    color = GreyText
+                )
+            }
+
+        } else if (job == null) {
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+
+                Text(
+                    text = "Gig not found.",
+                    color = GreyText,
+                    fontSize = 16.sp
+                )
+            }
+
+        } else {
+
+            val currentJob = job!!
+
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 20.dp,
+                    bottom = 16.dp
+                ),
+                verticalArrangement =
+                    Arrangement.spacedBy(16.dp)
+            ) {
+
+                // -------------------------------------------------
+                // JOB TITLE
+                // -------------------------------------------------
+
+                item {
+
+                    Column {
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment =
+                                Alignment.Top
+                        ) {
+
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+
+                                Text(
+                                    text = currentJob.title,
+                                    fontSize = 25.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = DarkText
+                                )
+
+                                Spacer(
+                                    modifier =
+                                        Modifier.height(5.dp)
+                                )
+
+                                Text(
+                                    text = currentJob.companyName
+                                        ?: "Company",
+                                    fontSize = 15.sp,
+                                    color = GreyText
+                                )
+                            }
+
+                            if (
+                                currentJob.tag
+                                    ?.lowercase() == "hot"
+                            ) {
+
+                                Box(
+                                    modifier = Modifier
+                                        .clip(
+                                            RoundedCornerShape(50.dp)
+                                        )
+                                        .background(
+                                            LightRed
+                                        )
+                                        .padding(
+                                            horizontal = 10.dp,
+                                            vertical = 5.dp
+                                        )
+                                ) {
+
+                                    Text(
+                                        text = "Hot",
+                                        color = Red,
+                                        fontSize = 12.sp,
+                                        fontWeight =
+                                            FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // -------------------------------------------------
+                // SALARY
+                // -------------------------------------------------
+
+                item {
+
+                    Row(
+                        verticalAlignment =
+                            Alignment.CenterVertically
+                    ) {
+
+                        Text(
+                            text =
+                                "RM ${formatSalary(currentJob.salary)}",
+                            color = Purple,
+                            fontSize = 21.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Text(
+                            text =
+                                " / ${currentJob.salaryPeriod}",
+                            color = Purple,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                // -------------------------------------------------
+                // INFORMATION BOXES
+                // -------------------------------------------------
+
+                item {
+
+                    Column(
+                        verticalArrangement =
+                            Arrangement.spacedBy(10.dp)
+                    ) {
+
+                        Row(
+                            modifier =
+                                Modifier.fillMaxWidth(),
+                            horizontalArrangement =
+                                Arrangement.spacedBy(10.dp)
+                        ) {
+
+                            InfoBox(
+                                modifier =
+                                    Modifier.weight(1f),
+                                title = "Working Hours",
+                                value = formatWorkingHours(
+                                    currentJob.workingHoursStart,
+                                    currentJob.workingHoursEnd
+                                )
+                            )
+
+                            InfoBox(
+                                modifier =
+                                    Modifier.weight(1f),
+                                title = "Working Dates",
+                                value = formatWorkingDate(
+                                    currentJob.startDate,
+                                    currentJob.endDate
+                                )
+                            )
+                        }
+
+                        Row(
+                            modifier =
+                                Modifier.fillMaxWidth(),
+                            horizontalArrangement =
+                                Arrangement.spacedBy(10.dp)
+                        ) {
+
+                            InfoBox(
+                                modifier =
+                                    Modifier.weight(1f),
+                                title = "Duration",
+                                value = calculateDuration(
+                                    currentJob.startDate,
+                                    currentJob.endDate
+                                )
+                            )
+
+                            InfoBox(
+                                modifier =
+                                    Modifier.weight(1f),
+                                title = "Vacancies",
+                                value =
+                                    "${currentJob.peopleNeeded} spots left"
+                            )
+                        }
+                    }
+                }
+
+                // -------------------------------------------------
+                // LOCATION
+                // -------------------------------------------------
+
+                item {
+
+                    InfoBox(
+                        modifier =
+                            Modifier.fillMaxWidth(),
+                        title = "Location",
+                        value = currentJob.location
+                    )
+                }
+
+                // -------------------------------------------------
+                // DESCRIPTION
+                // -------------------------------------------------
+
+                item {
+
+                    Column {
+
+                        Text(
+                            text = "Job Description",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DarkText
+                        )
+
+                        Spacer(
+                            modifier = Modifier.height(8.dp)
+                        )
+
+                        Text(
+                            text =
+                                currentJob.description
+                                    ?: "No description provided.",
+                            fontSize = 14.sp,
+                            lineHeight = 21.sp,
+                            color = GreyText
+                        )
+                    }
+                }
+
+                // -------------------------------------------------
+                // REQUIREMENTS
+                // -------------------------------------------------
+
+                item {
+
+                    Column {
+
+                        Text(
+                            text = "Requirements",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DarkText
+                        )
+
+                        Spacer(
+                            modifier = Modifier.height(8.dp)
+                        )
+
+                        val requirements =
+                            currentJob.requirements
+                                ?.split(
+                                    "\n",
+                                    "•",
+                                    "-"
+                                )
+                                ?.map {
+                                    it.trim()
+                                }
+                                ?.filter {
+                                    it.isNotBlank()
+                                }
+                                ?: emptyList()
+
+                        if (requirements.isEmpty()) {
+
+                            Text(
+                                text =
+                                    "No specific requirements.",
+                                color = GreyText,
+                                fontSize = 14.sp
+                            )
+
+                        } else {
+
+                            Column(
+                                verticalArrangement =
+                                    Arrangement.spacedBy(7.dp)
+                            ) {
+
+                                requirements.forEach {
+                                        requirement ->
+
+                                    Row(
+                                        verticalAlignment =
+                                            Alignment.Top
+                                    ) {
+
+                                        Text(
+                                            text = "•",
+                                            color = Purple,
+                                            fontSize = 16.sp,
+                                            fontWeight =
+                                                FontWeight.Bold
+                                        )
+
+                                        Spacer(
+                                            modifier =
+                                                Modifier.width(8.dp)
+                                        )
+
+                                        Text(
+                                            text = requirement,
+                                            color = GreyText,
+                                            fontSize = 14.sp,
+                                            lineHeight =
+                                                20.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // -------------------------------------------------
+                // APPLICATION MESSAGE
+                // -------------------------------------------------
+
+                item {
+
+                    if (applicationMessage != null) {
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(
+                                    RoundedCornerShape(10.dp)
+                                )
+                                .background(LightPurple)
+                                .padding(12.dp)
+                        ) {
+
+                            Text(
+                                text =
+                                    applicationMessage!!,
+                                color = Purple,
+                                fontSize = 14.sp,
+                                fontWeight =
+                                    FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // ---------------------------------------------------------
+        // APPLY BUTTON
+        // ---------------------------------------------------------
+
+        if (job != null) {
+
+            Button(
+                onClick = {
+
+                    val userId =
+                        SupabaseClient.client
+                            .auth
+                            .currentUserOrNull()
+                            ?.id
+
+                    if (userId == null) {
+
+                        applicationMessage =
+                            "Please login before applying."
+
+                    } else {
+
+                        scope.launch {
+
+                            try {
+
+                                val repository =
+                                    ApplicationRepository()
+
+                                repository.applyForJob(
+                                    jobId = job!!.id,
+                                    applicantId = userId
+                                )
+
+                                applicationMessage =
+                                    "Application submitted successfully!"
+
+                            } catch (e: Exception) {
+
+                                applicationMessage =
+                                    "Unable to submit application."
+                            }
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        horizontal = 16.dp,
+                        vertical = 8.dp
+                    )
+                    .height(52.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Green
+                ),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+
+                Text(
+                    text =
+                        "Apply Now - ${job!!.peopleNeeded} spots left",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        // ---------------------------------------------------------
+        // BOTTOM NAVIGATION
+        // ---------------------------------------------------------
+
+        JobSeekerNavBar(
+            selectedItem = JobSeekerNavItem.HOME,
+            onHomeClick = onHomeClick,
+            onExploreClick = onExploreClick,
+            onAppliedClick = onAppliedClick,
+            onProfileClick = onProfileClick
+        )
+    }
+}
+
+
+// =============================================================
+// INFO BOX
+// =============================================================
+
+@Composable
+private fun InfoBox(
+    modifier: Modifier = Modifier,
+    title: String,
+    value: String
+) {
+
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFF8F8FC)
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 0.dp
+        )
+    ) {
+
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+
+            Text(
+                text = title,
+                fontSize = 12.sp,
+                color = GreyText
+            )
+
+            Spacer(
+                modifier = Modifier.height(5.dp)
+            )
+
+            Text(
+                text = value,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = DarkText
+            )
+        }
+    }
+}
+
+
+// =============================================================
+// FORMAT SALARY
+// =============================================================
+
+private fun formatSalary(
+    salary: Double
+): String {
+
+    return if (salary % 1.0 == 0.0) {
+        salary.toInt().toString()
+    } else {
+        String.format("%.2f", salary)
+    }
+}
+
+
+// =============================================================
+// WORKING HOURS
+// =============================================================
+
+private fun formatWorkingHours(
+    start: String?,
+    end: String?
+): String {
+
+    if (start.isNullOrBlank() && end.isNullOrBlank()) {
+        return "-"
+    }
+
+    if (start.isNullOrBlank()) {
+        return end!!
+    }
+
+    if (end.isNullOrBlank()) {
+        return start
+    }
+
+    return "$start – $end"
+}
+
+
+// =============================================================
+// WORKING DATE
+// =============================================================
+
+private fun formatWorkingDate(
+    start: String?,
+    end: String?
+): String {
+
+    if (start.isNullOrBlank()) {
+        return "-"
+    }
+
+    if (end.isNullOrBlank() || start == end) {
+        return formatDate(start)
+    }
+
+    return "${formatDate(start)} – ${formatDate(end)}"
+}
+
+
+// =============================================================
+// DATE FORMAT
+// =============================================================
+
+private fun formatDate(
+    date: String
+): String {
+
+    val possibleFormats = listOf(
+        "MMM dd, yyyy",
+        "dd MMM yyyy",
+        "yyyy-MM-dd"
+    )
+
+    for (format in possibleFormats) {
+
+        try {
+
+            val formatter =
+                java.time.format.DateTimeFormatter
+                    .ofPattern(format)
+
+            val parsed =
+                java.time.LocalDate.parse(
+                    date,
+                    formatter
+                )
+
+            return parsed.format(
+                java.time.format.DateTimeFormatter
+                    .ofPattern("dd MMM yyyy")
+            )
+
+        } catch (_: Exception) {
+        }
+    }
+
+    return date
+}
+
+
+// =============================================================
+// DURATION
+// =============================================================
+
+private fun calculateDuration(
+    start: String?,
+    end: String?
+): String {
+
+    if (start.isNullOrBlank() ||
+        end.isNullOrBlank()
+    ) {
+        return "-"
+    }
+
+    try {
+
+        val formatter =
+            java.time.format.DateTimeFormatter
+                .ofPattern("MMM dd, yyyy")
+
+        val startDate =
+            java.time.LocalDate.parse(
+                start,
+                formatter
+            )
+
+        val endDate =
+            java.time.LocalDate.parse(
+                end,
+                formatter
+            )
+
+        val days =
+            java.time.temporal.ChronoUnit
+                .DAYS
+                .between(
+                    startDate,
+                    endDate
+                ) + 1
+
+        return if (days == 1L) {
+            "1 Day"
+        } else {
+            "$days Days"
+        }
+
+    } catch (_: Exception) {
+
+        return "-"
+    }
+}

@@ -5,6 +5,7 @@ import com.example.parttimego.data.model.Worker
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.collections.emptyList
 
 @Serializable
 data class JobApplicationDto(
@@ -113,6 +114,70 @@ class ApplicationRepository {
         } catch (e: Exception) {
             // Offline/network failure — silently fail for now.
             // Consider surfacing this to the UI if you want user-visible feedback.
+        }
+    }
+
+    // For Job Seeker
+    suspend fun getApplicationsForJobSeeker(
+        applicantId: String
+    ): List<Pair<JobApplicationDto, JobSummaryDto>> {
+
+        return try {
+
+            val applications = postgrest["job_applications"]
+                .select {
+                    filter {
+                        eq("applicant_id", applicantId)
+                    }
+                }
+                .decodeList<JobApplicationDto>()
+
+            if (applications.isEmpty()) {
+                return emptyList()
+            }
+
+            val jobIds = applications.map { it.jobId }
+
+            val jobs = postgrest["jobs"]
+                .select {
+                    filter {
+                        isIn("id", jobIds)
+                    }
+                }
+                .decodeList<JobSummaryDto>()
+
+            val jobsById = jobs.associateBy { it.id }
+
+            applications.mapNotNull { application ->
+                val job = jobsById[application.jobId]
+
+                if (job != null) {
+                    Pair(application, job)
+                } else {
+                    null
+                }
+            }
+
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun applyForJob(
+        jobId: String,
+        applicantId: String
+    ) {
+        try {
+            postgrest["job_applications"].insert(
+                mapOf(
+                    "job_id" to jobId,
+                    "applicant_id" to applicantId,
+                    "status" to "pending",
+                    "applied_at" to java.time.OffsetDateTime.now().toString()
+                )
+            )
+        } catch (e: Exception) {
+            // Ignore network/database error for now
         }
     }
 }

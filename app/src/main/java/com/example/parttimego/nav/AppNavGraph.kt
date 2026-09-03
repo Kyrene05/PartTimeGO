@@ -39,6 +39,7 @@ import com.example.parttimego.screen.RegisterScreen
 import com.example.parttimego.screen.SplashScreen
 import com.example.parttimego.screen.TermsAndConditionsScreen
 import com.example.parttimego.screen.UpdatePasswordScreen
+import com.example.parttimego.screen.worker.JobSeekerAppliedScreen
 import com.example.parttimego.screen.worker.JobSeekerGigListingScreen
 import com.example.parttimego.screen.worker.JobSeekerHomeScreen
 import com.example.parttimego.viewmodel.AuthState
@@ -72,6 +73,8 @@ sealed class Screen(val route: String) {
     object PostJob : Screen("post_job")
     object JobSeekerHome : Screen("job_seeker_home") // TODO: change to job seeker homepage
     object JobSeekerGigListing : Screen("job_seeker_gig_listing")
+    object JobSeekerGigDetail: Screen("job_seeker_gig_details")
+    object JobSeekerApplied : Screen("job_seeker_applied")
     object JobSeekerProfile : Screen("job_seeker_profile")
     object EditJobSeekerProfile : Screen("edit_job_seeker_profile")
     object EmployerProfile : Screen("employer_profile")
@@ -603,7 +606,7 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                     }
                 },
                 onAppliedClick = {
-                    // Applied Jobs will be connected later
+                    navController.navigate(Screen.JobSeekerApplied.route)
                 },
                 onProfileClick = {
                     navController.navigate(Screen.JobSeekerProfile.route)
@@ -628,10 +631,42 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                     }
                 },
                 onAppliedClick = {
-                    // Applied Jobs will be connected later
+                    navController.navigate(Screen.JobSeekerApplied.route)
                 },
                 onProfileClick = {
                     navController.navigate(Screen.JobSeekerProfile.route)
+                }
+            )
+        }
+
+        composable(
+            route = Screen.JobSeekerApplied.route
+        ) {
+            JobSeekerAppliedScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onHomeClick = {
+                    navController.navigate(
+                        Screen.JobSeekerHome.route
+                    ) {
+                        popUpTo(
+                            Screen.JobSeekerHome.route
+                        ) {
+                            inclusive = false
+                        }
+                        launchSingleTop = true
+                    }
+                },
+                onExploreClick = {
+                    navController.navigate(
+                        Screen.JobSeekerGigListing.route
+                    )
+                },
+                onProfileClick = {
+                    navController.navigate(
+                        Screen.MoreOptions.route
+                    )
                 }
             )
         }
