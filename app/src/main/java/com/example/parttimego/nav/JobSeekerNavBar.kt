@@ -24,7 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-enum class WorkerNavItem {
+enum class JobSeekerNavItem {
     HOME,
     EXPLORE,
     APPLIED,
@@ -32,8 +32,8 @@ enum class WorkerNavItem {
 }
 
 @Composable
-fun WorkerNavBar(
-    selectedItem: WorkerNavItem,
+fun JobSeekerNavBar(
+    selectedItem: JobSeekerNavItem,
     onHomeClick: () -> Unit = {},
     onExploreClick: () -> Unit = {},
     onAppliedClick: () -> Unit = {},
@@ -54,31 +54,31 @@ fun WorkerNavBar(
                 .fillMaxWidth()
                 .padding(vertical = 3.dp)
         ) {
-            WorkerNavBarItem(
+            JobSeekerNavBarItem(
                 icon = Icons.Default.Home,
                 label = "Home",
-                selected = selectedItem == WorkerNavItem.HOME,
+                selected = selectedItem == JobSeekerNavItem.HOME,
                 onClick = onHomeClick,
                 modifier = Modifier.weight(1f)
             )
-            WorkerNavBarItem(
+            JobSeekerNavBarItem(
                 icon = Icons.Default.Search,
                 label = "Explore",
-                selected = selectedItem == WorkerNavItem.EXPLORE,
+                selected = selectedItem == JobSeekerNavItem.EXPLORE,
                 onClick = onExploreClick,
                 modifier = Modifier.weight(1f)
             )
-            WorkerNavBarItem(
+            JobSeekerNavBarItem(
                 icon = Icons.AutoMirrored.Filled.ListAlt,
                 label = "Applied",
-                selected = selectedItem == WorkerNavItem.APPLIED,
+                selected = selectedItem == JobSeekerNavItem.APPLIED,
                 onClick = onAppliedClick,
                 modifier = Modifier.weight(1f)
             )
-            WorkerNavBarItem(
+            JobSeekerNavBarItem(
                 icon = Icons.Default.Person,
                 label = "Profile",
-                selected = selectedItem == WorkerNavItem.PROFILE,
+                selected = selectedItem == JobSeekerNavItem.PROFILE,
                 onClick = onProfileClick,
                 modifier = Modifier.weight(1f)
             )
@@ -87,7 +87,7 @@ fun WorkerNavBar(
 }
 
 @Composable
-private fun WorkerNavBarItem(
+private fun JobSeekerNavBarItem(
     icon: ImageVector,
     label: String,
     selected: Boolean,

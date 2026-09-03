@@ -46,8 +46,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.parttimego.data.local.JobEntity
-import com.example.parttimego.nav.WorkerNavBar
-import com.example.parttimego.nav.WorkerNavItem
+import com.example.parttimego.nav.JobSeekerNavBar
+import com.example.parttimego.nav.JobSeekerNavItem
 import com.example.parttimego.ui.theme.PartTimeGOTheme
 import com.example.parttimego.viewmodel.JobViewModel
 import java.text.SimpleDateFormat
@@ -111,7 +111,7 @@ private fun jobMatchesDateFilter(job: JobEntity, filter: DateFilter): Boolean {
 
 
 @Composable
-fun WorkerGigListingScreen(
+fun JobSeekerGigListingScreen(
     onBackClick: () -> Unit = {},
     onGigClick: (String) -> Unit = {},
     onHomeClick: () -> Unit = {},
@@ -128,7 +128,7 @@ fun WorkerGigListingScreen(
         jobViewModel.refreshAllJobs()
     }
 
-    WorkerGigListingContent(
+    JobSeekerGigListingContent(
         jobs = jobs,
         onBackClick = onBackClick,
         onGigClick = onGigClick,
@@ -140,7 +140,7 @@ fun WorkerGigListingScreen(
 
 
 @Composable
-fun WorkerGigListingContent(
+fun JobSeekerGigListingContent(
     jobs: List<JobEntity>,
     onBackClick: () -> Unit = {},
     onGigClick: (String) -> Unit = {},
@@ -374,7 +374,7 @@ fun WorkerGigListingContent(
                     key = { it.id }
                 ) { job ->
 
-                    WorkerGigListingCard(
+                    JobSeekerGigListingCard(
                         job = job,
                         onGigClick = {
                             onGigClick(job.id)
@@ -387,8 +387,8 @@ fun WorkerGigListingContent(
             }
         }
 
-        WorkerNavBar(
-            selectedItem = WorkerNavItem.EXPLORE,
+        JobSeekerNavBar(
+            selectedItem = JobSeekerNavItem.EXPLORE,
             onHomeClick = onHomeClick,
             onExploreClick = {},
             onAppliedClick = onAppliedClick,
@@ -465,7 +465,7 @@ private fun CategoryTab(
 
 
 @Composable
-private fun WorkerGigListingCard(
+private fun JobSeekerGigListingCard(
     job: JobEntity,
     onGigClick: () -> Unit,
     onApplyClick: () -> Unit
@@ -641,11 +641,11 @@ private fun JobTagBadge(tag: String?) {
     showSystemUi = true
 )
 @Composable
-fun WorkerGigListingScreenPreview() {
+fun JobSeekerGigListingScreenPreview() {
 
     PartTimeGOTheme {
 
-        WorkerGigListingContent(
+        JobSeekerGigListingContent(
             jobs = listOf(
                 JobEntity(
                     id = "1",

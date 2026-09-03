@@ -39,6 +39,8 @@ import com.example.parttimego.screen.RegisterScreen
 import com.example.parttimego.screen.SplashScreen
 import com.example.parttimego.screen.TermsAndConditionsScreen
 import com.example.parttimego.screen.UpdatePasswordScreen
+import com.example.parttimego.screen.worker.JobSeekerGigListingScreen
+import com.example.parttimego.screen.worker.JobSeekerHomeScreen
 import com.example.parttimego.viewmodel.AuthState
 import com.example.parttimego.viewmodel.AuthViewModel
 import com.example.parttimego.viewmodel.EmployerProfileViewModel
@@ -69,6 +71,7 @@ sealed class Screen(val route: String) {
     object Dashboard : Screen("dashboard")
     object PostJob : Screen("post_job")
     object JobSeekerHome : Screen("job_seeker_home") // TODO: change to job seeker homepage
+    object JobSeekerGigListing : Screen("job_seeker_gig_listing")
     object EmployerProfile : Screen("employer_profile")
     object EditEmployerProfile : Screen("edit_employer_profile")
     object ChangePassword : Screen("change_password")
@@ -588,7 +591,47 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
 
         // TODO: Job Seeker home
         composable(Screen.JobSeekerHome.route) {
-            Text("Job Seeker home — coming soon")
+            JobSeekerHomeScreen(
+                onGigClick = { jobId ->
+                    // Gig Details will be connected later
+                },
+                onExploreClick = {
+                    navController.navigate(Screen.JobSeekerGigListing.route) {
+                        launchSingleTop = true
+                    }
+                },
+                onAppliedClick = {
+                    // Applied Jobs will be connected later
+                },
+                onProfileClick = {
+                    // Job Seeker Profile will be connected later
+                }
+            )
+        }
+
+        composable(Screen.JobSeekerGigListing.route) {
+            JobSeekerGigListingScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onGigClick = { jobId ->
+                    // Gig Details will be connected later
+                },
+                onHomeClick = {
+                    navController.navigate(Screen.JobSeekerHome.route) {
+                        popUpTo(Screen.JobSeekerHome.route) {
+                            inclusive = false
+                        }
+                        launchSingleTop = true
+                    }
+                },
+                onAppliedClick = {
+                    // Applied Jobs will be connected later
+                },
+                onProfileClick = {
+                    // Job Seeker Profile will be connected later
+                }
+            )
         }
     }
 }

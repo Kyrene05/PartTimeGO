@@ -49,8 +49,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.parttimego.data.local.JobEntity
-import com.example.parttimego.nav.WorkerNavBar
-import com.example.parttimego.nav.WorkerNavItem
+import com.example.parttimego.nav.JobSeekerNavBar
+import com.example.parttimego.nav.JobSeekerNavItem
 import com.example.parttimego.ui.theme.PartTimeGOTheme
 import com.example.parttimego.viewmodel.JobViewModel
 
@@ -60,7 +60,7 @@ private val TagRed = Color(0xFFE53935)
 
 
 @Composable
-fun WorkerHomeScreen(
+fun JobSeekerHomeScreen(
     userName: String = "User",
     onGigClick: (String) -> Unit = {},
     onExploreClick: () -> Unit = {},
@@ -77,7 +77,7 @@ fun WorkerHomeScreen(
         jobViewModel.refreshAllJobs()
     }
 
-    WorkerHomeContent(
+    JobSeekerHomeContent(
         jobs = jobs,
         userName = userName,
         onGigClick = onGigClick,
@@ -89,7 +89,7 @@ fun WorkerHomeScreen(
 
 
 @Composable
-fun WorkerHomeContent(
+fun JobSeekerHomeContent(
     jobs: List<JobEntity>,
     userName: String = "User",
     onGigClick: (String) -> Unit = {},
@@ -121,7 +121,7 @@ fun WorkerHomeContent(
             modifier = Modifier.fillMaxSize()
         ) {
 
-            WorkerHomeHeader(userName = userName)
+            JobSeekerHomeHeader(userName = userName)
 
             Surface(
                 modifier = Modifier
@@ -264,7 +264,7 @@ fun WorkerHomeContent(
                             key = { it.id }
                         ) { job ->
 
-                            WorkerJobCard(
+                            JobSeekerJobCard(
                                 job = job,
                                 onClick = {
                                     onGigClick(job.id)
@@ -278,8 +278,8 @@ fun WorkerHomeContent(
                 }
             }
 
-            WorkerNavBar(
-                selectedItem = WorkerNavItem.HOME,
+            JobSeekerNavBar(
+                selectedItem = JobSeekerNavItem.HOME,
                 onHomeClick = {},
                 onExploreClick = onExploreClick,
                 onAppliedClick = onAppliedClick,
@@ -291,7 +291,7 @@ fun WorkerHomeContent(
 
 
 @Composable
-private fun WorkerHomeHeader(
+private fun JobSeekerHomeHeader(
     userName: String
 ) {
 
@@ -517,7 +517,7 @@ private fun CategoryBox(
 
 
 @Composable
-private fun WorkerJobCard(
+private fun JobSeekerJobCard(
     job: JobEntity,
     onClick: () -> Unit,
     onApplyClick: () -> Unit
@@ -727,16 +727,13 @@ private fun EmptyJobsCard() {
  * "Failed to instantiate a ViewModel".
  */
 
-@Preview(
-    showBackground = true,
-    showSystemUi = true
-)
+@Preview(showBackground = true)
 @Composable
-fun WorkerHomeScreenPreview() {
+fun JobSeekerHomeScreenPreview() {
 
     PartTimeGOTheme {
 
-        WorkerHomeContent(
+        JobSeekerHomeContent(
             userName = "Ahmad Faris",
             jobs = listOf(
                 JobEntity(

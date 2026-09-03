@@ -6,7 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.parttimego.data.model.Worker
-import com.example.parttimego.data.repository.WorkerRepository
+import com.example.parttimego.data.repository.JobSeekerRepository
 import com.example.parttimego.screen.GigExperienceItem
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
@@ -83,7 +83,7 @@ data class WorkerUiState(
 
 class WorkerViewModel(
     private val supabaseClient: SupabaseClient,
-    private val repository: WorkerRepository? = null
+    private val repository: JobSeekerRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WorkerUiState())
@@ -464,7 +464,7 @@ class WorkerViewModel(
 
 class WorkerViewModelFactory(
     private val supabaseClient: SupabaseClient,
-    private val repository: WorkerRepository? = null
+    private val repository: JobSeekerRepository? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {

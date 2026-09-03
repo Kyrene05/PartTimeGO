@@ -46,13 +46,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.parttimego.data.model.Worker
-import com.example.parttimego.nav.WorkerNavBar
-import com.example.parttimego.nav.WorkerNavItem
+import com.example.parttimego.nav.JobSeekerNavBar
+import com.example.parttimego.nav.JobSeekerNavItem
 import com.example.parttimego.ui.theme.DarkText
 import com.example.parttimego.ui.theme.PartTimeGOTheme
 
 @Composable
-fun WorkerProfileScreen(
+fun JobSeekerProfileScreen(
     worker: Worker,
     onEditProfileClick: () -> Unit = {},
     onAvailabilityChange: (Boolean) -> Unit = {}
@@ -71,7 +71,7 @@ fun WorkerProfileScreen(
         ) {
 
             // Profile Header
-            WorkerProfileHeader(
+            JobSeekerProfileHeader(
                 worker = worker,
                 onEditProfileClick = onEditProfileClick
             )
@@ -170,8 +170,8 @@ fun WorkerProfileScreen(
                     }
                 }
             }
-            WorkerNavBar(
-                selectedItem = WorkerNavItem.PROFILE,
+            JobSeekerNavBar(
+                selectedItem = JobSeekerNavItem.PROFILE,
                 onHomeClick = {
                     // Navigation to WorkerHomeScreen
                 },
@@ -190,7 +190,7 @@ fun WorkerProfileScreen(
 }
 
 @Composable
-private fun WorkerProfileHeader(
+private fun JobSeekerProfileHeader(
     worker: Worker,
     onEditProfileClick: () -> Unit
 ) {
@@ -723,9 +723,9 @@ private fun getAvailabilityText(
 
 @Preview(showBackground = true)
 @Composable
-private fun WorkerProfileScreenPreview(){
+private fun JobSeekerProfileScreenPreview(){
     PartTimeGOTheme() {
-        WorkerProfileScreen(
+        JobSeekerProfileScreen(
             worker = Worker(
                 workerId = "W001",
                 userId = "U001",
