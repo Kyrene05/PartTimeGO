@@ -14,14 +14,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -54,7 +51,6 @@ private val Grey = Color(0xFF777777)
 
 @Composable
 fun JobSeekerAppliedScreen(
-    onBackClick: () -> Unit = {},
     onHomeClick: () -> Unit = {},
     onExploreClick: () -> Unit = {},
     onProfileClick: () -> Unit = {}
@@ -134,17 +130,6 @@ fun JobSeekerAppliedScreen(
                 .background(Purple)
                 .padding(20.dp)
         ) {
-            IconButton(
-                onClick = onBackClick
-            ) {
-
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color.White
-                )
-            }
-
             Text(
                 text = "My Applications",
                 color = Color.White,
@@ -161,6 +146,67 @@ fun JobSeekerAppliedScreen(
                 color = Color.White.copy(alpha = 0.8f),
                 fontSize = 13.sp
             )
+
+            Spacer(
+                modifier = Modifier.height(10.dp)
+            )
+
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+
+                contentPadding =
+                    PaddingValues(
+                        horizontal = 16.dp,
+                        vertical = 16.dp
+                    ),
+
+                verticalArrangement =
+                    Arrangement.spacedBy(14.dp)
+            ) {
+                // STATISTICS
+                item {
+
+                    Row(
+                        modifier =
+                            Modifier.fillMaxWidth(),
+                        horizontalArrangement =
+                            Arrangement.spacedBy(8.dp)
+                    ) {
+
+                        ApplicationStatCard(
+                            modifier =
+                                Modifier.weight(1f),
+                            title = "Applied",
+                            value = total.toString(),
+                            color = Purple
+                        )
+
+                        ApplicationStatCard(
+                            modifier =
+                                Modifier.weight(1f),
+                            title = "Pending",
+                            value = pending.toString(),
+                            color = Orange
+                        )
+
+                        ApplicationStatCard(
+                            modifier =
+                                Modifier.weight(1f),
+                            title = "Accepted",
+                            value = accepted.toString(),
+                            color = Green
+                        )
+
+                        ApplicationStatCard(
+                            modifier =
+                                Modifier.weight(1f),
+                            title = "Done",
+                            value = done.toString(),
+                            color = Blue
+                        )
+                    }
+                }
+            }
         }
 
         LazyColumn(
@@ -175,51 +221,6 @@ fun JobSeekerAppliedScreen(
             verticalArrangement =
                 Arrangement.spacedBy(14.dp)
         ) {
-
-            // STATISTICS
-            item {
-
-                Row(
-                    modifier =
-                        Modifier.fillMaxWidth(),
-                    horizontalArrangement =
-                        Arrangement.spacedBy(8.dp)
-                ) {
-
-                    ApplicationStatCard(
-                        modifier =
-                            Modifier.weight(1f),
-                        title = "Applied",
-                        value = total.toString(),
-                        color = Purple
-                    )
-
-                    ApplicationStatCard(
-                        modifier =
-                            Modifier.weight(1f),
-                        title = "Pending",
-                        value = pending.toString(),
-                        color = Orange
-                    )
-
-                    ApplicationStatCard(
-                        modifier =
-                            Modifier.weight(1f),
-                        title = "Accepted",
-                        value = accepted.toString(),
-                        color = Green
-                    )
-
-                    ApplicationStatCard(
-                        modifier =
-                            Modifier.weight(1f),
-                        title = "Done",
-                        value = done.toString(),
-                        color = Blue
-                    )
-                }
-            }
-
             if (isLoading) {
 
                 item {
@@ -325,17 +326,11 @@ private fun ApplicationStatCard(
     color: Color
 ) {
 
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(
-            containerColor =
-                color.copy(alpha = 0.08f)
-        ),
-        elevation =
-            CardDefaults.cardElevation(
-                defaultElevation = 0.dp
-            )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Black),
+        color = Color.White
     ) {
 
         Column(
@@ -382,23 +377,11 @@ private fun ApplicationCard(
         ApplicationRepository()
     }
 
-    Card(
-        modifier =
-            Modifier.fillMaxWidth(),
-
-        shape =
-            RoundedCornerShape(14.dp),
-
-        colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    Color.White
-            ),
-
-        elevation =
-            CardDefaults.cardElevation(
-                defaultElevation = 2.dp
-            )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Black),
+        color = Color.White
     ) {
 
         Column(
