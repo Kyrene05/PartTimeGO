@@ -109,14 +109,21 @@ class AuthViewModel : ViewModel() {
                     // Create worker profile for Job Seeker
                     if (selectedRole == "job_seeker") {
                         SupabaseClient.client.postgrest["worker"].insert(
-                            mapOf(
-                                "worker_id" to userId,
-                                "worker_name" to fullName,
-                                "worker_availability" to false,
-                                "worker_skills" to "",
-                                "worker_preferredLocation" to "",
-                                "worker_workHistory" to ""
-                            )
+                            buildJsonObject {
+                                put("worker_id", userId)
+                                put("user_id", userId)
+                                put("worker_name", fullName)
+                                put("worker_phoneNo", "")
+                                put("worker_email", "")
+                                put("worker_availability", false)
+                                put("worker_preferredJobCategories", "")
+                                put("worker_skills", "")
+                                put("worker_preferredState", "")
+                                put("worker_preferredLocation", "")
+                                put("worker_workHistory", "")
+                                put("worker_createdAt", java.time.OffsetDateTime.now().toString())
+                                put("worker_updatedAt", java.time.OffsetDateTime.now().toString())
+                            }
                         )
                     }
                 }

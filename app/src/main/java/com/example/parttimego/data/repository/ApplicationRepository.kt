@@ -60,12 +60,12 @@ class ApplicationRepository {
 
             val profiles = postgrest["worker"]
                 .select {
-                    filter { isIn("user_id", applicantIds) }
+                    filter { isIn("worker_id", applicantIds) }
                 }
                 .decodeList<Worker>()
 
             val jobsById = jobs.associateBy { it.id }
-            val workersByUserId = profiles.associateBy { it.userId }
+            val workersByUserId = profiles.associateBy { it.workerId }
 
             applications.mapNotNull { app ->
                 val job = jobsById[app.jobId] ?: return@mapNotNull null
@@ -78,7 +78,7 @@ class ApplicationRepository {
                 Triple(app,job,resolvedProfile)
             }
         } catch (e: Exception) {
-            // Offline/network failure — return empty rather than crashing.
+            e.printStackTrace()
             emptyList()
         }
     }
@@ -105,15 +105,18 @@ class ApplicationRepository {
     }
 
     suspend fun updateApplicationStatus(applicationId: String, status: String) {
+        android.util.Log.d("ApplicationRepo", "Attempting update with applicationId='$applicationId'")
         try {
-            postgrest["job_applications"].update(
+            val result = postgrest["job_applications"].update(
                 mapOf("status" to status)
             ) {
                 filter { eq("id", applicationId) }
-            }
+                select()
+            }.decodeList<JobApplicationDto>()
+
+            android.util.Log.d("ApplicationRepo", "Updated ${result.size} rows")
         } catch (e: Exception) {
-            // Offline/network failure — silently fail for now.
-            // Consider surfacing this to the UI if you want user-visible feedback.
+            android.util.Log.e("ApplicationRepo", "Update failed", e)
         }
     }
 

@@ -145,8 +145,13 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                         val status = SupabaseClient.client.auth.sessionStatus.first { it !is SessionStatus.Initializing }
 
                         val destination = if (status is SessionStatus.Authenticated) {
-                            val role = authViewModel.getCurrentUserRole()
-                            if (role == "employer") Screen.Dashboard.route else Screen.JobSeekerHome.route
+                            try {
+                                val role = authViewModel.getCurrentUserRole()
+                                if (role == "employer") Screen.Dashboard.route else Screen.JobSeekerHome.route
+                            } catch (e: Exception) {
+                                SupabaseClient.client.auth.signOut()
+                                Screen.Login.route
+                            }
                         } else {
                             Screen.Login.route
                         }
@@ -504,7 +509,7 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             val profileViewModel: EmployerProfileViewModel = viewModel(
                 factory = EmployerProfileViewModelFactory(SupabaseClient.client)
             )
-
+            val coroutineScope = rememberCoroutineScope()
             // Re-sync with database every time returning to this screen
             LaunchedEffect(Unit) {
                 profileViewModel.loadUserProfile()
@@ -533,8 +538,15 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                     navController.navigate(Screen.MoreOptions.route)
                 },
                 onLogoutNavigateToLogin = {
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(0) { inclusive = true }
+                    coroutineScope.launch {
+                        try {
+                            SupabaseClient.client.auth.signOut()
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
                     }
                 }
             )
