@@ -290,25 +290,74 @@ private fun StatCardLarge(
     label: String,
     onClick: (() -> Unit)? = null
 ) {
+    val isClickable = onClick != null
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .let { if (onClick != null) it.clickable { onClick() } else it },
+            .let { if (isClickable) it.clickable { onClick() } else it },
         shape = RoundedCornerShape(16.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Black),
+        border = androidx.compose.foundation.BorderStroke(
+            width = if (isClickable) 1.5.dp else 1.dp,
+            color = if (isClickable) DarkNavy else Black
+        ),
         color = Color.White
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 20.dp),
+                .padding(horizontal = 20.dp, vertical = 18.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Icon(icon, contentDescription = label, tint = Color.Black, modifier = Modifier.size(50.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (isClickable) SoftGrey else Color.Transparent),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = label,
+                        tint = if (isClickable) DarkNavy else Color.Black,
+                        modifier = Modifier.size(34.dp)
+                    )
+                }
+            }
+
             Column(horizontalAlignment = Alignment.End) {
-                Text(value, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                Text(label, fontSize = 13.sp, color = MutedText)
+                Text(
+                    text = value,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+                Text(
+                    text = label,
+                    fontSize = 13.sp,
+                    color = MutedText
+                )
+
+                if (isClickable) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Manage",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = DarkNavy
+                        )
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Icon(
+                            imageVector = Icons.Filled.ChevronRight,
+                            contentDescription = "Go to $label",
+                            tint = DarkNavy,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
             }
         }
     }
