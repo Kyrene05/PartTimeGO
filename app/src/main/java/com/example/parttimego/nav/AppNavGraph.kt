@@ -40,6 +40,7 @@ import com.example.parttimego.screen.SplashScreen
 import com.example.parttimego.screen.TermsAndConditionsScreen
 import com.example.parttimego.screen.UpdatePasswordScreen
 import com.example.parttimego.screen.worker.JobSeekerAppliedScreen
+import com.example.parttimego.screen.worker.JobSeekerGigDetailScreen
 import com.example.parttimego.screen.worker.JobSeekerGigListingScreen
 import com.example.parttimego.screen.worker.JobSeekerHomeScreen
 import com.example.parttimego.viewmodel.AuthState
@@ -73,7 +74,9 @@ sealed class Screen(val route: String) {
     object PostJob : Screen("post_job")
     object JobSeekerHome : Screen("job_seeker_home") // TODO: change to job seeker homepage
     object JobSeekerGigListing : Screen("job_seeker_gig_listing")
-    object JobSeekerGigDetail: Screen("job_seeker_gig_details")
+    object JobSeekerGigDetail : Screen("job_seeker_gig_details/{jobId}") {
+        fun createRoute(jobId: String) = "job_seeker_gig_details/$jobId"
+    }
     object JobSeekerApplied : Screen("job_seeker_applied")
     object JobSeekerProfile : Screen("job_seeker_profile")
     object EditJobSeekerProfile : Screen("edit_job_seeker_profile")
@@ -598,7 +601,9 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
         composable(Screen.JobSeekerHome.route) {
             JobSeekerHomeScreen(
                 onGigClick = { jobId ->
-                    // Gig Details will be connected later
+                    navController.navigate(
+                        Screen.JobSeekerGigDetail.createRoute(jobId)
+                    )
                 },
                 onExploreClick = {
                     navController.navigate(Screen.JobSeekerGigListing.route) {
@@ -609,7 +614,11 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                     navController.navigate(Screen.JobSeekerApplied.route)
                 },
                 onProfileClick = {
-                    navController.navigate(Screen.JobSeekerProfile.route)
+                    navController.navigate(
+                        Screen.JobSeekerProfile.route
+                    ) {
+                        launchSingleTop = true
+                    }
                 }
             )
         }
@@ -620,7 +629,9 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                     navController.popBackStack()
                 },
                 onGigClick = { jobId ->
-                    // Gig Details will be connected later
+                    navController.navigate(
+                        Screen.JobSeekerGigDetail.createRoute(jobId)
+                    )
                 },
                 onHomeClick = {
                     navController.navigate(Screen.JobSeekerHome.route) {
@@ -634,7 +645,53 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                     navController.navigate(Screen.JobSeekerApplied.route)
                 },
                 onProfileClick = {
-                    navController.navigate(Screen.JobSeekerProfile.route)
+                    navController.navigate(
+                        Screen.JobSeekerProfile.route
+                    ) {
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = Screen.JobSeekerGigDetail.route,
+            arguments = listOf(
+                navArgument("jobId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+
+            val jobId = backStackEntry.arguments?.getString("jobId") ?: ""
+
+            JobSeekerGigDetailScreen(
+                jobId = jobId,
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onHomeClick = {
+                    navController.navigate(Screen.JobSeekerHome.route) {
+                        popUpTo(Screen.JobSeekerHome.route) {
+                            inclusive = false
+                        }
+                        launchSingleTop = true
+                    }
+                },
+                onExploreClick = {
+                    navController.navigate(Screen.JobSeekerGigListing.route) {
+                        launchSingleTop = true
+                    }
+                },
+                onAppliedClick = {
+                    navController.navigate(Screen.JobSeekerApplied.route)
+                },
+                onProfileClick = {
+                    navController.navigate(
+                        Screen.JobSeekerProfile.route
+                    ) {
+                        launchSingleTop = true
+                    }
                 }
             )
         }
@@ -659,16 +716,23 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                     }
                 },
                 onExploreClick = {
-                    navController.navigate(
-                        Screen.JobSeekerGigListing.route
-                    )
+                    navController.navigate(Screen.JobSeekerGigListing.route)
                 },
                 onProfileClick = {
                     navController.navigate(
-                        Screen.MoreOptions.route
-                    )
+                        Screen.JobSeekerProfile.route
+                    ) {
+                        launchSingleTop = true
+                    }
                 }
             )
+        }
+
+        composable(
+            route = Screen.JobSeekerProfile.route
+        ) {
+            // Profile screen will be connected to the current Worker data
+            // in the next part.
         }
     }
 }

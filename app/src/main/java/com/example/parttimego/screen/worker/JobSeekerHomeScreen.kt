@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -39,12 +40,14 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,11 +59,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.parttimego.data.SupabaseClient
 import com.example.parttimego.data.local.JobEntity
+import com.example.parttimego.data.repository.ApplicationRepository
 import com.example.parttimego.nav.JobSeekerNavBar
 import com.example.parttimego.nav.JobSeekerNavItem
 import com.example.parttimego.ui.theme.PartTimeGOTheme
 import com.example.parttimego.viewmodel.JobViewModel
+import io.github.jan.supabase.auth.auth
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -128,6 +135,20 @@ fun JobSeekerHomeContent(
     var tempSalaryRange by remember { mutableStateOf<String?>(null) }
     var tempWorkingHour by remember { mutableStateOf<String?>(null) }
     var tempCategory by remember { mutableStateOf<String?>(null) }
+
+    // For Apply part
+    var selectedJob by remember { mutableStateOf<JobEntity?>(null) }
+    var showApplyDialog by remember { mutableStateOf(false) }
+    var showCancelDialog by remember { mutableStateOf(false) }
+    var appliedJobIds by remember { mutableStateOf(setOf<String>()) }
+
+    val scope = rememberCoroutineScope()
+    val repository = remember { ApplicationRepository() }
+    val userId =
+        SupabaseClient.client
+            .auth
+            .currentUserOrNull()
+            ?.id
 
     val today = LocalDate.now()
 
@@ -376,7 +397,12 @@ fun JobSeekerHomeContent(
                                     onGigClick(job.id)
                                 },
                                 onApplyClick = {
-                                    onGigClick(job.id)
+                                    selectedJob = job
+                                    if (job.id in appliedJobIds) {
+                                        showCancelDialog = true
+                                    } else {
+                                        showApplyDialog = true
+                                    }
                                 }
                             )
                         }
@@ -390,6 +416,136 @@ fun JobSeekerHomeContent(
                 onExploreClick = onExploreClick,
                 onAppliedClick = onAppliedClick,
                 onProfileClick = onProfileClick
+            )
+        }
+
+        // Apply Confirmation
+        if (showApplyDialog && selectedJob != null) {
+
+            AlertDialog(
+                onDismissRequest = {
+                    showApplyDialog = false
+                },
+
+                title = {
+                    Text("Confirm Application")
+                },
+
+                text = {
+                    Text(
+                        "Are you sure you want to apply for \"${selectedJob!!.title}\"?"
+                    )
+                },
+
+                confirmButton = {
+
+                    TextButton(
+                        onClick = {
+
+                            if (userId != null) {
+
+                                scope.launch {
+
+                                    try {
+
+                                        repository.applyForJob(
+                                            jobId = selectedJob!!.id,
+                                            applicantId = userId
+                                        )
+
+                                        appliedJobIds =
+                                            appliedJobIds +
+                                                    selectedJob!!.id
+
+                                    } catch (_: Exception) {
+                                    }
+
+                                    showApplyDialog = false
+                                }
+
+                            } else {
+
+                                showApplyDialog = false
+                            }
+                        }
+                    ) {
+                        Text("Confirm")
+                    }
+                },
+
+                dismissButton = {
+
+                    TextButton(
+                        onClick = {
+                            showApplyDialog = false
+                        }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        // Cancel Application
+        if (showCancelDialog && selectedJob != null) {
+
+            AlertDialog(
+                onDismissRequest = {
+                    showCancelDialog = false
+                },
+
+                title = {
+                    Text("Cancel Application")
+                },
+
+                text = {
+                    Text(
+                        "Are you sure you want to cancel your application for \"${selectedJob!!.title}\"?"
+                    )
+                },
+
+                confirmButton = {
+
+                    TextButton(
+                        onClick = {
+
+                            if (userId != null) {
+
+                                scope.launch {
+
+                                    try {
+
+                                        repository.cancelApplication(
+                                            jobId = selectedJob!!.id,
+                                            applicantId = userId
+                                        )
+
+                                        appliedJobIds =
+                                            appliedJobIds -
+                                                    selectedJob!!.id
+
+                                    } catch (_: Exception) {
+                                    }
+
+                                    showCancelDialog = false
+                                }
+                            }
+                        }
+                    ) {
+                        Text("Confirm")
+                    }
+                },
+
+                dismissButton = {
+
+                    TextButton(
+                        onClick = {
+                            showCancelDialog = false
+                        }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
             )
         }
     }

@@ -18,9 +18,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -29,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,8 +54,9 @@ import com.example.parttimego.viewmodel.JobViewModel
 import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
+import java.util.Locale
 
-private val Purple = Color(0xFF7B61FF)
+private val Purple = Color(0xFF262075)
 private val LightPurple = Color(0xFFF1EEFF)
 private val Green = Color(0xFF22A447)
 private val LightBlue = Color(0xFFEAF4FF)
@@ -74,6 +77,13 @@ fun JobSeekerGigDetailScreen(
 ) {
 
     val scope = rememberCoroutineScope()
+    val repository = remember { ApplicationRepository() }
+
+    val userId =
+        SupabaseClient.client
+            .auth
+            .currentUserOrNull()
+            ?.id
 
     var job by remember {
         mutableStateOf<JobEntity?>(null)
@@ -87,13 +97,22 @@ fun JobSeekerGigDetailScreen(
         mutableStateOf(false)
     }
 
-    var applicationMessage by remember {
-        mutableStateOf<String?>(null)
+    var isApplied by remember {
+        mutableStateOf(false)
     }
 
-    // ---------------------------------------------------------
-    // LOAD JOB
-    // ---------------------------------------------------------
+    var showApplyDialog by remember {
+        mutableStateOf(false)
+    }
+
+    var showCancelDialog by remember {
+        mutableStateOf(false)
+    }
+
+    // Load Job
+    LaunchedEffect(Unit) {
+        jobViewModel.refreshAllJobs()
+    }
 
     LaunchedEffect(jobId) {
 
@@ -101,14 +120,28 @@ fun JobSeekerGigDetailScreen(
 
         jobViewModel.getAllJobs().collect { jobs ->
 
-            job = jobs.firstOrNull {
-                it.id == jobId
-            }
+            val foundJob =
+                jobs.firstOrNull {
+                    it.id == jobId
+                }
 
-            if (job != null) {
+            if (foundJob != null) {
+
+                job = foundJob
                 isLoading = false
-                return@collect
             }
+        }
+    }
+
+    LaunchedEffect(jobId, userId) {
+
+        if (userId != null) {
+
+            isApplied =
+                repository.hasApplied(
+                    jobId = jobId,
+                    applicantId = userId
+                )
         }
     }
 
@@ -118,10 +151,7 @@ fun JobSeekerGigDetailScreen(
             .background(Color.White)
     ) {
 
-        // -----------------------------------------------------
-        // HEADER
-        // -----------------------------------------------------
-
+        // Header
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -144,7 +174,7 @@ fun JobSeekerGigDetailScreen(
                 ) {
 
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
                         tint = Color.White
                     )
@@ -181,12 +211,8 @@ fun JobSeekerGigDetailScreen(
             }
         }
 
-        // -----------------------------------------------------
-        // CONTENT
-        // -----------------------------------------------------
-
+        // Content
         if (isLoading) {
-
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -234,88 +260,81 @@ fun JobSeekerGigDetailScreen(
                 verticalArrangement =
                     Arrangement.spacedBy(16.dp)
             ) {
-
-                // -------------------------------------------------
-                // JOB TITLE
-                // -------------------------------------------------
-
+                // Job Title
                 item {
 
-                    Column {
+                    Row(
+                        verticalAlignment =
+                            Alignment.Top
+                    ) {
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment =
-                                Alignment.Top
+                        Column(
+                            modifier =
+                                Modifier.weight(1f)
                         ) {
 
-                            Column(
-                                modifier = Modifier.weight(1f)
-                            ) {
+                            Text(
+                                text =
+                                    currentJob.title,
+                                fontSize = 25.sp,
+                                fontWeight =
+                                    FontWeight.Bold,
+                                color = DarkText
+                            )
 
-                                Text(
-                                    text = currentJob.title,
-                                    fontSize = 25.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = DarkText
-                                )
+                            Spacer(
+                                modifier =
+                                    Modifier.height(5.dp)
+                            )
 
-                                Spacer(
-                                    modifier =
-                                        Modifier.height(5.dp)
-                                )
-
-                                Text(
-                                    text = currentJob.companyName
+                            Text(
+                                text =
+                                    currentJob.companyName
                                         ?: "Company",
-                                    fontSize = 15.sp,
-                                    color = GreyText
-                                )
-                            }
+                                fontSize = 15.sp,
+                                color = GreyText
+                            )
+                        }
 
-                            if (
-                                currentJob.tag
-                                    ?.lowercase() == "hot"
+                        if (
+                            currentJob.tag
+                                ?.lowercase() == "hot"
+                        ) {
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(
+                                        RoundedCornerShape(
+                                            50.dp
+                                        )
+                                    )
+                                    .background(
+                                        LightRed
+                                    )
+                                    .padding(
+                                        horizontal = 10.dp,
+                                        vertical = 5.dp
+                                    )
                             ) {
 
-                                Box(
-                                    modifier = Modifier
-                                        .clip(
-                                            RoundedCornerShape(50.dp)
-                                        )
-                                        .background(
-                                            LightRed
-                                        )
-                                        .padding(
-                                            horizontal = 10.dp,
-                                            vertical = 5.dp
-                                        )
-                                ) {
-
-                                    Text(
-                                        text = "Hot",
-                                        color = Red,
-                                        fontSize = 12.sp,
-                                        fontWeight =
-                                            FontWeight.Bold
-                                    )
-                                }
+                                Text(
+                                    text = "Hot",
+                                    color = Red,
+                                    fontSize = 12.sp,
+                                    fontWeight =
+                                        FontWeight.Bold
+                                )
                             }
                         }
                     }
                 }
 
-                // -------------------------------------------------
-                // SALARY
-                // -------------------------------------------------
-
+                // Salary
                 item {
-
                     Row(
                         verticalAlignment =
                             Alignment.CenterVertically
                     ) {
-
                         Text(
                             text =
                                 "RM ${formatSalary(currentJob.salary)}",
@@ -334,24 +353,18 @@ fun JobSeekerGigDetailScreen(
                     }
                 }
 
-                // -------------------------------------------------
-                // INFORMATION BOXES
-                // -------------------------------------------------
-
+                // Information Box
                 item {
-
                     Column(
                         verticalArrangement =
                             Arrangement.spacedBy(10.dp)
                     ) {
-
                         Row(
                             modifier =
                                 Modifier.fillMaxWidth(),
                             horizontalArrangement =
                                 Arrangement.spacedBy(10.dp)
                         ) {
-
                             InfoBox(
                                 modifier =
                                     Modifier.weight(1f),
@@ -361,7 +374,6 @@ fun JobSeekerGigDetailScreen(
                                     currentJob.workingHoursEnd
                                 )
                             )
-
                             InfoBox(
                                 modifier =
                                     Modifier.weight(1f),
@@ -401,10 +413,7 @@ fun JobSeekerGigDetailScreen(
                     }
                 }
 
-                // -------------------------------------------------
-                // LOCATION
-                // -------------------------------------------------
-
+                // Location
                 item {
 
                     InfoBox(
@@ -415,14 +424,9 @@ fun JobSeekerGigDetailScreen(
                     )
                 }
 
-                // -------------------------------------------------
-                // DESCRIPTION
-                // -------------------------------------------------
-
+                // Description
                 item {
-
                     Column {
-
                         Text(
                             text = "Job Description",
                             fontSize = 18.sp,
@@ -430,9 +434,7 @@ fun JobSeekerGigDetailScreen(
                             color = DarkText
                         )
 
-                        Spacer(
-                            modifier = Modifier.height(8.dp)
-                        )
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
                             text =
@@ -445,10 +447,7 @@ fun JobSeekerGigDetailScreen(
                     }
                 }
 
-                // -------------------------------------------------
-                // REQUIREMENTS
-                // -------------------------------------------------
-
+                // Requirement
                 item {
 
                     Column {
@@ -456,157 +455,43 @@ fun JobSeekerGigDetailScreen(
                         Text(
                             text = "Requirements",
                             fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight =
+                                FontWeight.Bold,
                             color = DarkText
                         )
 
                         Spacer(
-                            modifier = Modifier.height(8.dp)
+                            modifier =
+                                Modifier.height(8.dp)
                         )
 
-                        val requirements =
-                            currentJob.requirements
-                                ?.split(
-                                    "\n",
-                                    "•",
-                                    "-"
-                                )
-                                ?.map {
-                                    it.trim()
-                                }
-                                ?.filter {
-                                    it.isNotBlank()
-                                }
-                                ?: emptyList()
-
-                        if (requirements.isEmpty()) {
-
-                            Text(
-                                text =
-                                    "No specific requirements.",
-                                color = GreyText,
-                                fontSize = 14.sp
-                            )
-
-                        } else {
-
-                            Column(
-                                verticalArrangement =
-                                    Arrangement.spacedBy(7.dp)
-                            ) {
-
-                                requirements.forEach {
-                                        requirement ->
-
-                                    Row(
-                                        verticalAlignment =
-                                            Alignment.Top
-                                    ) {
-
-                                        Text(
-                                            text = "•",
-                                            color = Purple,
-                                            fontSize = 16.sp,
-                                            fontWeight =
-                                                FontWeight.Bold
-                                        )
-
-                                        Spacer(
-                                            modifier =
-                                                Modifier.width(8.dp)
-                                        )
-
-                                        Text(
-                                            text = requirement,
-                                            color = GreyText,
-                                            fontSize = 14.sp,
-                                            lineHeight =
-                                                20.sp
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                        Text(
+                            text =
+                                currentJob.requirements
+                                    ?: "No specific requirements.",
+                            fontSize = 14.sp,
+                            lineHeight = 21.sp,
+                            color = GreyText
+                        )
                     }
                 }
 
-                // -------------------------------------------------
-                // APPLICATION MESSAGE
-                // -------------------------------------------------
-
-                item {
-
-                    if (applicationMessage != null) {
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(
-                                    RoundedCornerShape(10.dp)
-                                )
-                                .background(LightPurple)
-                                .padding(12.dp)
-                        ) {
-
-                            Text(
-                                text =
-                                    applicationMessage!!,
-                                color = Purple,
-                                fontSize = 14.sp,
-                                fontWeight =
-                                    FontWeight.Medium
-                            )
-                        }
-                    }
-                }
             }
         }
 
-        // ---------------------------------------------------------
-        // APPLY BUTTON
-        // ---------------------------------------------------------
-
+        // Apply Button
         if (job != null) {
 
             Button(
                 onClick = {
 
-                    val userId =
-                        SupabaseClient.client
-                            .auth
-                            .currentUserOrNull()
-                            ?.id
-
-                    if (userId == null) {
-
-                        applicationMessage =
-                            "Please login before applying."
-
+                    if (isApplied) {
+                        showCancelDialog = true
                     } else {
-
-                        scope.launch {
-
-                            try {
-
-                                val repository =
-                                    ApplicationRepository()
-
-                                repository.applyForJob(
-                                    jobId = job!!.id,
-                                    applicantId = userId
-                                )
-
-                                applicationMessage =
-                                    "Application submitted successfully!"
-
-                            } catch (e: Exception) {
-
-                                applicationMessage =
-                                    "Unable to submit application."
-                            }
-                        }
+                        showApplyDialog = true
                     }
                 },
+
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(
@@ -614,39 +499,165 @@ fun JobSeekerGigDetailScreen(
                         vertical = 8.dp
                     )
                     .height(52.dp),
+
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Green
+                    containerColor =
+                        if (isApplied)
+                            Color.Gray
+                        else
+                            Green
                 ),
-                shape = RoundedCornerShape(10.dp)
+
+                shape =
+                    RoundedCornerShape(10.dp)
             ) {
 
                 Text(
                     text =
-                        "Apply Now - ${job!!.peopleNeeded} spots left",
+                        if (isApplied)
+                            "Applied"
+                        else
+                            "Apply Now",
+
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight =
+                        FontWeight.Bold
                 )
             }
         }
 
-        // ---------------------------------------------------------
-        // BOTTOM NAVIGATION
-        // ---------------------------------------------------------
-
         JobSeekerNavBar(
-            selectedItem = JobSeekerNavItem.HOME,
+            selectedItem =
+                JobSeekerNavItem.HOME,
             onHomeClick = onHomeClick,
             onExploreClick = onExploreClick,
             onAppliedClick = onAppliedClick,
             onProfileClick = onProfileClick
         )
     }
+
+    // APPLY DIALOG
+    if (showApplyDialog) {
+
+        AlertDialog(
+            onDismissRequest = {
+                showApplyDialog = false
+            },
+
+            title = {
+                Text("Confirm Application")
+            },
+
+            text = {
+                Text(
+                    "Are you sure you want to apply for this gig?"
+                )
+            },
+
+            confirmButton = {
+
+                TextButton(
+                    onClick = {
+
+                        if (userId != null) {
+
+                            scope.launch {
+
+                                try {
+
+                                    repository.applyForJob(
+                                        jobId = jobId,
+                                        applicantId = userId
+                                    )
+
+                                    isApplied = true
+
+                                } catch (_: Exception) {
+                                }
+
+                                showApplyDialog = false
+                            }
+                        }
+                    }
+                ) {
+                    Text("Confirm")
+                }
+            },
+
+            dismissButton = {
+
+                TextButton(
+                    onClick = {
+                        showApplyDialog = false
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // CANCEL DIALOG
+    if (showCancelDialog) {
+
+        AlertDialog(
+            onDismissRequest = {
+                showCancelDialog = false
+            },
+
+            title = {
+                Text("Cancel Application")
+            },
+
+            text = {
+                Text(
+                    "Are you sure you want to cancel your application?"
+                )
+            },
+
+            confirmButton = {
+
+                TextButton(
+                    onClick = {
+
+                        if (userId != null) {
+
+                            scope.launch {
+
+                                try {
+
+                                    repository.cancelApplication(
+                                        jobId = jobId,
+                                        applicantId = userId
+                                    )
+
+                                    isApplied = false
+
+                                } catch (_: Exception) {
+                                }
+
+                                showCancelDialog = false
+                            }
+                        }
+                    }
+                ) {
+                    Text("Confirm")
+                }
+            },
+
+            dismissButton = {
+
+                TextButton(
+                    onClick = {
+                        showCancelDialog = false
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
-
-
-// =============================================================
-// INFO BOX
-// =============================================================
 
 @Composable
 private fun InfoBox(
@@ -659,11 +670,13 @@ private fun InfoBox(
         modifier = modifier,
         shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFF8F8FC)
+            containerColor =
+                Color(0xFFF8F8FC)
         ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 0.dp
-        )
+        elevation =
+            CardDefaults.cardElevation(
+                defaultElevation = 0.dp
+            )
     ) {
 
         Column(
@@ -677,23 +690,21 @@ private fun InfoBox(
             )
 
             Spacer(
-                modifier = Modifier.height(5.dp)
+                modifier =
+                    Modifier.height(5.dp)
             )
 
             Text(
                 text = value,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
+                fontWeight =
+                    FontWeight.Bold,
                 color = DarkText
             )
         }
     }
 }
 
-
-// =============================================================
-// FORMAT SALARY
-// =============================================================
 
 private fun formatSalary(
     salary: Double
@@ -702,26 +713,29 @@ private fun formatSalary(
     return if (salary % 1.0 == 0.0) {
         salary.toInt().toString()
     } else {
-        String.format("%.2f", salary)
+        String.format(
+            Locale.US,
+            "%.2f",
+            salary
+        )
     }
 }
 
-
-// =============================================================
-// WORKING HOURS
-// =============================================================
 
 private fun formatWorkingHours(
     start: String?,
     end: String?
 ): String {
 
-    if (start.isNullOrBlank() && end.isNullOrBlank()) {
+    if (
+        start.isNullOrBlank() &&
+        end.isNullOrBlank()
+    ) {
         return "-"
     }
 
     if (start.isNullOrBlank()) {
-        return end!!
+        return end ?: "-"
     }
 
     if (end.isNullOrBlank()) {
@@ -732,10 +746,6 @@ private fun formatWorkingHours(
 }
 
 
-// =============================================================
-// WORKING DATE
-// =============================================================
-
 private fun formatWorkingDate(
     start: String?,
     end: String?
@@ -745,104 +755,32 @@ private fun formatWorkingDate(
         return "-"
     }
 
-    if (end.isNullOrBlank() || start == end) {
-        return formatDate(start)
+    if (
+        end.isNullOrBlank() ||
+        start == end
+    ) {
+        return start
     }
 
-    return "${formatDate(start)} – ${formatDate(end)}"
+    return "$start – $end"
 }
 
-
-// =============================================================
-// DATE FORMAT
-// =============================================================
-
-private fun formatDate(
-    date: String
-): String {
-
-    val possibleFormats = listOf(
-        "MMM dd, yyyy",
-        "dd MMM yyyy",
-        "yyyy-MM-dd"
-    )
-
-    for (format in possibleFormats) {
-
-        try {
-
-            val formatter =
-                java.time.format.DateTimeFormatter
-                    .ofPattern(format)
-
-            val parsed =
-                java.time.LocalDate.parse(
-                    date,
-                    formatter
-                )
-
-            return parsed.format(
-                java.time.format.DateTimeFormatter
-                    .ofPattern("dd MMM yyyy")
-            )
-
-        } catch (_: Exception) {
-        }
-    }
-
-    return date
-}
-
-
-// =============================================================
-// DURATION
-// =============================================================
 
 private fun calculateDuration(
     start: String?,
     end: String?
 ): String {
 
-    if (start.isNullOrBlank() ||
+    if (
+        start.isNullOrBlank() ||
         end.isNullOrBlank()
     ) {
         return "-"
     }
 
-    try {
-
-        val formatter =
-            java.time.format.DateTimeFormatter
-                .ofPattern("MMM dd, yyyy")
-
-        val startDate =
-            java.time.LocalDate.parse(
-                start,
-                formatter
-            )
-
-        val endDate =
-            java.time.LocalDate.parse(
-                end,
-                formatter
-            )
-
-        val days =
-            java.time.temporal.ChronoUnit
-                .DAYS
-                .between(
-                    startDate,
-                    endDate
-                ) + 1
-
-        return if (days == 1L) {
-            "1 Day"
-        } else {
-            "$days Days"
-        }
-
-    } catch (_: Exception) {
-
-        return "-"
+    return if (start == end) {
+        "1 day"
+    } else {
+        "Multiple days"
     }
 }

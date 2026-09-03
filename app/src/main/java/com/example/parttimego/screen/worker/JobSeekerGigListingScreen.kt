@@ -19,10 +19,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -30,33 +32,36 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.parttimego.data.SupabaseClient
 import com.example.parttimego.data.local.JobEntity
+import com.example.parttimego.data.repository.ApplicationRepository
 import com.example.parttimego.nav.JobSeekerNavBar
 import com.example.parttimego.nav.JobSeekerNavItem
-import com.example.parttimego.ui.theme.PartTimeGOTheme
 import com.example.parttimego.viewmodel.JobViewModel
+import io.github.jan.supabase.auth.auth
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 private val Purple = Color(0xFF262075)
-private val AccentGreen = Color(0xFF2E9E5B)
-private val TagRed = Color(0xFFE53935)
+private val Green = Color(0xFF2E9E5B)
 
 private enum class DateFilter(val label: String) {
     ALL("All"),
@@ -66,46 +71,80 @@ private enum class DateFilter(val label: String) {
     ONE_MONTH("1 Month")
 }
 
-private val jobDateFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH)
+private val jobDateFormat =
+    SimpleDateFormat(
+        "dd MMM yyyy",
+        Locale.ENGLISH
+    )
 
-private fun jobMatchesDateFilter(job: JobEntity, filter: DateFilter): Boolean {
+private fun jobMatchesDateFilter(
+    job: JobEntity,
+    filter: DateFilter
+): Boolean {
 
-    if (filter == DateFilter.ALL) return true
-
-    val startDateText = job.startDate ?: return false
-
-    val jobDate = try {
-        jobDateFormat.parse(startDateText)
-    } catch (e: Exception) {
-        null
-    } ?: return false
-
-    val today = Calendar.getInstance().apply {
-        set(Calendar.HOUR_OF_DAY, 0)
-        set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
+    if (filter == DateFilter.ALL) {
+        return true
     }
 
-    val jobCal = Calendar.getInstance().apply {
-        time = jobDate
-        set(Calendar.HOUR_OF_DAY, 0)
-        set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
-    }
+    val startDateText =
+        job.startDate ?: return false
 
-    val diffDays = ((jobCal.timeInMillis - today.timeInMillis) / (1000 * 60 * 60 * 24)).toInt()
+    val jobDate =
+        try {
+            jobDateFormat.parse(startDateText)
+        } catch (_: Exception) {
+            null
+        } ?: return false
+
+    val today =
+        Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+    val jobCal =
+        Calendar.getInstance().apply {
+            time = jobDate
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+    val diffDays =
+        (
+                (jobCal.timeInMillis -
+                        today.timeInMillis) /
+                        (1000 * 60 * 60 * 24)
+                ).toInt()
 
     return when (filter) {
-        DateFilter.TODAY -> diffDays == 0
+
+        DateFilter.TODAY ->
+            diffDays == 0
+
         DateFilter.WEEKEND -> {
-            val dow = jobCal.get(Calendar.DAY_OF_WEEK)
-            diffDays in 0..7 && (dow == Calendar.SATURDAY || dow == Calendar.SUNDAY)
+
+            val day =
+                jobCal.get(Calendar.DAY_OF_WEEK)
+
+            diffDays in 0..7 &&
+                    (
+                            day == Calendar.SATURDAY ||
+                                    day == Calendar.SUNDAY
+                            )
         }
-        DateFilter.ONE_WEEK -> diffDays in 0..7
-        DateFilter.ONE_MONTH -> diffDays in 0..30
-        DateFilter.ALL -> true
+
+        DateFilter.ONE_WEEK ->
+            diffDays in 0..7
+
+        DateFilter.ONE_MONTH ->
+            diffDays in 0..30
+
+        DateFilter.ALL ->
+            true
     }
 }
 
@@ -124,30 +163,16 @@ fun JobSeekerGigListingScreen(
         .getAllJobs()
         .collectAsState(initial = emptyList())
 
-    LaunchedEffect(Unit) {
-        jobViewModel.refreshAllJobs()
+    val scope = rememberCoroutineScope()
+    val repository = remember {
+        ApplicationRepository()
     }
 
-    JobSeekerGigListingContent(
-        jobs = jobs,
-        onBackClick = onBackClick,
-        onGigClick = onGigClick,
-        onHomeClick = onHomeClick,
-        onAppliedClick = onAppliedClick,
-        onProfileClick = onProfileClick
-    )
-}
-
-
-@Composable
-fun JobSeekerGigListingContent(
-    jobs: List<JobEntity>,
-    onBackClick: () -> Unit = {},
-    onGigClick: (String) -> Unit = {},
-    onHomeClick: () -> Unit = {},
-    onAppliedClick: () -> Unit = {},
-    onProfileClick: () -> Unit = {}
-) {
+    val userId =
+        SupabaseClient.client
+            .auth
+            .currentUserOrNull()
+            ?.id
 
     var searchText by remember {
         mutableStateOf("")
@@ -161,6 +186,48 @@ fun JobSeekerGigListingContent(
         mutableStateOf(DateFilter.ALL)
     }
 
+    var selectedJob by remember {
+        mutableStateOf<JobEntity?>(null)
+    }
+
+    var showApplyDialog by remember {
+        mutableStateOf(false)
+    }
+
+    var showCancelDialog by remember {
+        mutableStateOf(false)
+    }
+
+    var appliedJobIds by remember {
+        mutableStateOf(setOf<String>())
+    }
+
+    LaunchedEffect(Unit) {
+        jobViewModel.refreshAllJobs()
+    }
+
+    LaunchedEffect(jobs, userId) {
+
+        if (userId != null) {
+
+            val applied = mutableSetOf<String>()
+
+            jobs.forEach { job ->
+
+                if (
+                    repository.hasApplied(
+                        jobId = job.id,
+                        applicantId = userId
+                    )
+                ) {
+                    applied.add(job.id)
+                }
+            }
+
+            appliedJobIds = applied
+        }
+    }
+
     val categories = listOf(
         "All",
         "Event Crew",
@@ -170,24 +237,41 @@ fun JobSeekerGigListingContent(
         "Other"
     )
 
-    val filteredJobs = jobs.filter { job ->
+    val filteredJobs =
+        jobs.filter { job ->
 
-        val matchesSearch =
-            job.title.contains(searchText, ignoreCase = true) ||
-                    job.category.contains(searchText, ignoreCase = true) ||
-                    job.location.contains(searchText, ignoreCase = true)
+            val matchesSearch =
+                searchText.isBlank() ||
+                        job.title.contains(
+                            searchText,
+                            ignoreCase = true
+                        ) ||
+                        job.category.contains(
+                            searchText,
+                            ignoreCase = true
+                        ) ||
+                        job.location.contains(
+                            searchText,
+                            ignoreCase = true
+                        )
 
-        val matchesCategory =
-            selectedCategory == "All" ||
-                    job.category.equals(
-                        selectedCategory,
-                        ignoreCase = true
-                    )
+            val matchesCategory =
+                selectedCategory == "All" ||
+                        job.category.equals(
+                            selectedCategory,
+                            ignoreCase = true
+                        )
 
-        val matchesDate = jobMatchesDateFilter(job, selectedDateFilter)
+            val matchesDate =
+                jobMatchesDateFilter(
+                    job,
+                    selectedDateFilter
+                )
 
-        matchesSearch && matchesCategory && matchesDate
-    }
+            matchesSearch &&
+                    matchesCategory &&
+                    matchesDate
+        }
 
     Column(
         modifier = Modifier
@@ -195,7 +279,6 @@ fun JobSeekerGigListingContent(
             .background(Color.White)
     ) {
 
-        // Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -206,7 +289,8 @@ fun JobSeekerGigListingContent(
                     top = 14.dp,
                     bottom = 14.dp
                 ),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment =
+                Alignment.CenterVertically
         ) {
 
             IconButton(
@@ -214,7 +298,7 @@ fun JobSeekerGigListingContent(
             ) {
 
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
                     tint = Color.White
                 )
@@ -230,7 +314,7 @@ fun JobSeekerGigListingContent(
 
             Surface(
                 shape = RoundedCornerShape(20.dp),
-                color = AccentGreen
+                color = Green
             ) {
 
                 Text(
@@ -254,10 +338,10 @@ fun JobSeekerGigListingContent(
                 top = 16.dp,
                 bottom = 20.dp
             ),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement =
+                Arrangement.spacedBy(14.dp)
         ) {
 
-            // Search bar
             item {
 
                 OutlinedTextField(
@@ -268,14 +352,11 @@ fun JobSeekerGigListingContent(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     placeholder = {
-
                         Text(
-                            text = "Search by title, company, location...",
-                            fontSize = 13.sp
+                            "Search by title, company, location..."
                         )
                     },
                     leadingIcon = {
-
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = "Search"
@@ -285,87 +366,134 @@ fun JobSeekerGigListingContent(
                 )
             }
 
-            // Date filter tabs
             item {
 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement =
+                        Arrangement.spacedBy(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
+                        .horizontalScroll(
+                            rememberScrollState()
+                        )
                 ) {
 
-                    DateFilter.values().forEach { filter ->
+                    DateFilter.values()
+                        .forEach { filter ->
 
-                        DateFilterTab(
-                            text = filter.label,
-                            selected = selectedDateFilter == filter,
-                            onClick = {
-                                selectedDateFilter = filter
+                            Surface(
+                                modifier =
+                                    Modifier.clickable {
+                                        selectedDateFilter =
+                                            filter
+                                    },
+                                shape =
+                                    RoundedCornerShape(20.dp),
+                                color =
+                                    if (
+                                        selectedDateFilter ==
+                                        filter
+                                    )
+                                        Purple
+                                    else
+                                        Color(0xFFF1F1F1)
+                            ) {
+
+                                Text(
+                                    text = filter.label,
+                                    color =
+                                        if (
+                                            selectedDateFilter ==
+                                            filter
+                                        )
+                                            Color.White
+                                        else
+                                            Color.DarkGray,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(
+                                        horizontal = 14.dp,
+                                        vertical = 8.dp
+                                    )
+                                )
                             }
-                        )
-                    }
+                        }
                 }
             }
 
-            // Categories
             item {
 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement =
+                        Arrangement.spacedBy(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
+                        .horizontalScroll(
+                            rememberScrollState()
+                        )
                 ) {
 
                     categories.forEach { category ->
 
-                        CategoryTab(
-                            text = category,
-                            selected = selectedCategory == category,
-                            onClick = {
-                                selectedCategory = category
-                            }
-                        )
+                        Surface(
+                            modifier =
+                                Modifier.clickable {
+                                    selectedCategory =
+                                        category
+                                },
+                            shape =
+                                RoundedCornerShape(10.dp),
+                            color =
+                                if (
+                                    selectedCategory ==
+                                    category
+                                )
+                                    Purple.copy(
+                                        alpha = 0.10f
+                                    )
+                                else
+                                    Color(0xFFF1F1F1)
+                        ) {
+
+                            Text(
+                                text = category,
+                                color =
+                                    if (
+                                        selectedCategory ==
+                                        category
+                                    )
+                                        Purple
+                                    else
+                                        Color.DarkGray,
+                                fontSize = 12.sp,
+                                fontWeight =
+                                    if (
+                                        selectedCategory ==
+                                        category
+                                    )
+                                        FontWeight.Bold
+                                    else
+                                        FontWeight.Normal,
+                                modifier = Modifier.padding(
+                                    horizontal = 12.dp,
+                                    vertical = 9.dp
+                                )
+                            )
+                        }
                     }
                 }
             }
 
-            // Gig cards
             if (filteredJobs.isEmpty()) {
 
                 item {
 
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        color = Color(0xFFF5F5F5)
-                    ) {
-
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(25.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-
-                            Text(
-                                text = "No gigs found",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-
-                            Spacer(
-                                modifier = Modifier.height(5.dp)
-                            )
-
-                            Text(
-                                text = "Try another search or category.",
-                                fontSize = 13.sp,
-                                color = Color.Gray
-                            )
-                        }
-                    }
+                    Text(
+                        text = "No gigs found.",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(30.dp),
+                        color = Color.Gray
+                    )
                 }
 
             } else {
@@ -375,13 +503,26 @@ fun JobSeekerGigListingContent(
                     key = { it.id }
                 ) { job ->
 
-                    JobSeekerGigListingCard(
+                    GigListingCard(
                         job = job,
+                        isApplied =
+                            job.id in appliedJobIds,
+
                         onGigClick = {
                             onGigClick(job.id)
                         },
+
                         onApplyClick = {
-                            onGigClick(job.id)
+
+                            selectedJob = job
+
+                            if (
+                                job.id in appliedJobIds
+                            ) {
+                                showCancelDialog = true
+                            } else {
+                                showApplyDialog = true
+                            }
                         }
                     )
                 }
@@ -389,85 +530,151 @@ fun JobSeekerGigListingContent(
         }
 
         JobSeekerNavBar(
-            selectedItem = JobSeekerNavItem.EXPLORE,
+            selectedItem =
+                JobSeekerNavItem.EXPLORE,
             onHomeClick = onHomeClick,
             onExploreClick = {},
             onAppliedClick = onAppliedClick,
             onProfileClick = onProfileClick
         )
     }
-}
 
+    // APPLY DIALOG
+    if (showApplyDialog && selectedJob != null) {
 
-@Composable
-private fun DateFilterTab(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-
-    Surface(
-        modifier = Modifier.clickable {
-            onClick()
-        },
-        shape = RoundedCornerShape(20.dp),
-        color = if (selected) Purple else Color(0xFFF1F1F1)
-    ) {
-
-        Text(
-            text = text,
-            color = if (selected) Color.White else Color.DarkGray,
-            fontSize = 12.sp,
-            fontWeight = if (selected) {
-                FontWeight.Bold
-            } else {
-                FontWeight.Normal
+        AlertDialog(
+            onDismissRequest = {
+                showApplyDialog = false
             },
-            modifier = Modifier.padding(
-                horizontal = 14.dp,
-                vertical = 8.dp
-            )
+
+            title = {
+                Text("Confirm Application")
+            },
+
+            text = {
+                Text(
+                    "Are you sure you want to apply for \"${selectedJob!!.title}\"?"
+                )
+            },
+
+            confirmButton = {
+
+                TextButton(
+                    onClick = {
+
+                        if (userId != null) {
+
+                            scope.launch {
+
+                                try {
+
+                                    repository.applyForJob(
+                                        jobId =
+                                            selectedJob!!.id,
+                                        applicantId =
+                                            userId
+                                    )
+
+                                    appliedJobIds =
+                                        appliedJobIds +
+                                                selectedJob!!.id
+
+                                } catch (_: Exception) {
+                                }
+
+                                showApplyDialog = false
+                            }
+                        }
+                    }
+                ) {
+                    Text("Confirm")
+                }
+            },
+
+            dismissButton = {
+
+                TextButton(
+                    onClick = {
+                        showApplyDialog = false
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // CANCEL DIALOG
+    if (showCancelDialog && selectedJob != null) {
+
+        AlertDialog(
+            onDismissRequest = {
+                showCancelDialog = false
+            },
+
+            title = {
+                Text("Cancel Application")
+            },
+
+            text = {
+                Text(
+                    "Are you sure you want to cancel your application for \"${selectedJob!!.title}\"?"
+                )
+            },
+
+            confirmButton = {
+
+                TextButton(
+                    onClick = {
+
+                        if (userId != null) {
+
+                            scope.launch {
+
+                                try {
+
+                                    repository.cancelApplication(
+                                        jobId =
+                                            selectedJob!!.id,
+                                        applicantId =
+                                            userId
+                                    )
+
+                                    appliedJobIds =
+                                        appliedJobIds -
+                                                selectedJob!!.id
+
+                                } catch (_: Exception) {
+                                }
+
+                                showCancelDialog = false
+                            }
+                        }
+                    }
+                ) {
+                    Text("Confirm")
+                }
+            },
+
+            dismissButton = {
+
+                TextButton(
+                    onClick = {
+                        showCancelDialog = false
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
         )
     }
 }
 
 
 @Composable
-private fun CategoryTab(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-
-    Surface(
-        modifier = Modifier.clickable {
-            onClick()
-        },
-        shape = RoundedCornerShape(10.dp),
-        color = if (selected) Purple.copy(alpha = 0.10f) else Color(0xFFF1F1F1)
-    ) {
-
-        Text(
-            text = text,
-            color = if (selected) Purple else Color.DarkGray,
-            fontSize = 12.sp,
-            fontWeight = if (selected) {
-                FontWeight.Bold
-            } else {
-                FontWeight.Normal
-            },
-            modifier = Modifier.padding(
-                horizontal = 12.dp,
-                vertical = 9.dp
-            )
-        )
-    }
-}
-
-
-@Composable
-private fun JobSeekerGigListingCard(
+private fun GigListingCard(
     job: JobEntity,
+    isApplied: Boolean,
     onGigClick: () -> Unit,
     onApplyClick: () -> Unit
 ) {
@@ -487,9 +694,7 @@ private fun JobSeekerGigListingCard(
             modifier = Modifier.padding(16.dp)
         ) {
 
-            Row(
-                verticalAlignment = Alignment.Top
-            ) {
+            Row {
 
                 Column(
                     modifier = Modifier.weight(1f)
@@ -498,8 +703,7 @@ private fun JobSeekerGigListingCard(
                     Text(
                         text = job.title,
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        fontWeight = FontWeight.Bold
                     )
 
                     Spacer(
@@ -507,13 +711,32 @@ private fun JobSeekerGigListingCard(
                     )
 
                     Text(
-                        text = job.companyName ?: "Company",
+                        text =
+                            job.companyName ?: "Company",
                         fontSize = 13.sp,
-                        color = Color.DarkGray
+                        color = Color.Gray
                     )
                 }
 
-                JobTagBadge(tag = job.tag)
+                if (!job.tag.isNullOrBlank()) {
+
+                    Surface(
+                        shape =
+                            RoundedCornerShape(20.dp),
+                        color = Purple
+                    ) {
+
+                        Text(
+                            text = job.tag!!,
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(
+                                horizontal = 9.dp,
+                                vertical = 5.dp
+                            )
+                        )
+                    }
+                }
             }
 
             Spacer(
@@ -521,11 +744,13 @@ private fun JobSeekerGigListingCard(
             )
 
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment =
+                    Alignment.CenterVertically
             ) {
 
                 Icon(
-                    imageVector = Icons.Default.LocationOn,
+                    imageVector =
+                        Icons.Default.LocationOn,
                     contentDescription = null,
                     tint = Color.Gray,
                     modifier = Modifier.size(17.dp)
@@ -538,7 +763,7 @@ private fun JobSeekerGigListingCard(
                 Text(
                     text = job.location,
                     fontSize = 13.sp,
-                    color = Color.DarkGray
+                    color = Color.Gray
                 )
             }
 
@@ -547,11 +772,13 @@ private fun JobSeekerGigListingCard(
             )
 
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment =
+                    Alignment.CenterVertically
             ) {
 
                 Icon(
-                    imageVector = Icons.Default.CalendarMonth,
+                    imageVector =
+                        Icons.Default.CalendarMonth,
                     contentDescription = null,
                     tint = Color.Gray,
                     modifier = Modifier.size(17.dp)
@@ -562,9 +789,10 @@ private fun JobSeekerGigListingCard(
                 )
 
                 Text(
-                    text = job.startDate ?: "Flexible date",
+                    text =
+                        job.startDate ?: "Flexible",
                     fontSize = 13.sp,
-                    color = Color.DarkGray
+                    color = Color.Gray
                 )
             }
 
@@ -573,120 +801,40 @@ private fun JobSeekerGigListingCard(
             )
 
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment =
+                    Alignment.CenterVertically
             ) {
 
                 Text(
-                    text = "RM ${job.salary} / ${job.salaryPeriod}",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
+                    text =
+                        "RM ${job.salary} / ${job.salaryPeriod}",
                     color = Purple,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
 
                 Button(
                     onClick = onApplyClick,
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AccentGreen
-                    )
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor =
+                                if (isApplied)
+                                    Color.Gray
+                                else
+                                    Green
+                        ),
+                    shape =
+                        RoundedCornerShape(10.dp)
                 ) {
 
                     Text(
-                        text = "Apply Now",
-                        fontSize = 13.sp
+                        if (isApplied)
+                            "Applied"
+                        else
+                            "Apply Now"
                     )
                 }
             }
         }
-    }
-}
-
-
-@Composable
-private fun JobTagBadge(tag: String?) {
-
-    if (tag.isNullOrBlank()) return
-
-    val badgeColor = when (tag.lowercase()) {
-        "hot" -> TagRed
-        "new" -> AccentGreen
-        else -> Purple
-    }
-
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = badgeColor
-    ) {
-
-        Text(
-            text = tag,
-            color = Color.White,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(
-                horizontal = 10.dp,
-                vertical = 5.dp
-            )
-        )
-    }
-}
-
-/*
- * PREVIEW
- * No ViewModel is created here.
- */
-
-@Preview(
-    showBackground = true,
-    showSystemUi = true
-)
-@Composable
-fun JobSeekerGigListingScreenPreview() {
-
-    PartTimeGOTheme {
-
-        JobSeekerGigListingContent(
-            jobs = listOf(
-                JobEntity(
-                    id = "1",
-                    employerId = "employer1",
-                    title = "Event Crew",
-                    companyName = "ABC Events",
-                    category = "Event",
-                    salary = 100.0,
-                    salaryPeriod = "day",
-                    startDate = "5 Sep 2026",
-                    endDate = "5 Sep 2026",
-                    workingHoursStart = "9:00 AM",
-                    workingHoursEnd = "6:00 PM",
-                    location = "Georgetown",
-                    description = "Help with event setup.",
-                    requirements = "Friendly and responsible.",
-                    peopleNeeded = 5,
-                    tag = "Popular",
-                    createdAt = "2026-09-02"
-                ),
-                JobEntity(
-                    id = "2",
-                    employerId = "employer2",
-                    title = "Retail Assistant",
-                    companyName = "ABC Store",
-                    category = "Retail",
-                    salary = 12.0,
-                    salaryPeriod = "hour",
-                    startDate = "6 Sep 2026",
-                    endDate = "6 Sep 2026",
-                    workingHoursStart = "10:00 AM",
-                    workingHoursEnd = "6:00 PM",
-                    location = "Bayan Lepas",
-                    description = "Assist customers.",
-                    requirements = "Good communication.",
-                    peopleNeeded = 3,
-                    tag = "New",
-                    createdAt = "2026-09-02"
-                )
-            )
-        )
     }
 }

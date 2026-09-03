@@ -4,61 +4,53 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.parttimego.data.SupabaseClient
 import com.example.parttimego.data.repository.ApplicationRepository
 import com.example.parttimego.data.repository.JobApplicationDto
 import com.example.parttimego.data.repository.JobSummaryDto
-import com.example.parttimego.data.SupabaseClient
 import com.example.parttimego.nav.JobSeekerNavBar
 import com.example.parttimego.nav.JobSeekerNavItem
 import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.rememberCoroutineScope
 
-private val Purple = Color(0xFF7B61FF)
-private val LightPurple = Color(0xFFF1EEFF)
+private val Purple = Color(0xFF262075)
 private val Green = Color(0xFF22A447)
-private val LightGreen = Color(0xFFE8F7ED)
 private val Orange = Color(0xFFFF9800)
-private val LightOrange = Color(0xFFFFF3E0)
-private val Blue = Color(0xFF2196F3)
-private val LightBlue = Color(0xFFEAF4FF)
-private val DarkText = Color(0xFF222222)
-private val GreyText = Color(0xFF777777)
+private val Blue = Color(0xFF1976D2)
+private val Grey = Color(0xFF777777)
+
 
 @Composable
 fun JobSeekerAppliedScreen(
@@ -74,9 +66,20 @@ fun JobSeekerAppliedScreen(
 
     val scope = rememberCoroutineScope()
 
+    val userId =
+        SupabaseClient.client
+            .auth
+            .currentUserOrNull()
+            ?.id
+
     var applications by remember {
         mutableStateOf(
-            emptyList<Pair<JobApplicationDto, JobSummaryDto>>()
+            emptyList<
+                    Pair<
+                            JobApplicationDto,
+                            JobSummaryDto
+                            >
+                    >()
         )
     }
 
@@ -84,42 +87,35 @@ fun JobSeekerAppliedScreen(
         mutableStateOf(true)
     }
 
-    val currentUserId =
-        SupabaseClient.client.auth.currentUserOrNull()?.id
+    LaunchedEffect(userId) {
 
-    // Load applications
-    LaunchedEffect(currentUserId) {
-
-        if (currentUserId != null) {
+        if (userId != null) {
 
             isLoading = true
 
             applications =
                 repository.getApplicationsForJobSeeker(
-                    currentUserId
+                    applicantId = userId
                 )
 
-            isLoading = false
-        } else {
             isLoading = false
         }
     }
 
-    // Statistics
-    val totalApplications =
+    val total =
         applications.size
 
-    val acceptedCount =
+    val accepted =
         applications.count {
             it.first.status == "accepted"
         }
 
-    val pendingCount =
+    val pending =
         applications.count {
             it.first.status == "pending"
         }
 
-    val doneCount =
+    val done =
         applications.count {
             it.first.status == "done_accepted" ||
                     it.first.status == "done_rejected"
@@ -131,173 +127,169 @@ fun JobSeekerAppliedScreen(
             .background(Color.White)
     ) {
 
-        // Header
-        Box(
+        // HEADER
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Purple)
-                .padding(
-                    start = 8.dp,
-                    end = 16.dp,
-                    top = 36.dp,
-                    bottom = 18.dp
-                )
+                .padding(20.dp)
         ) {
+            IconButton(
+                onClick = onBackClick
+            ) {
 
-            Column {
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-
-                    IconButton(
-                        onClick = onBackClick
-                    ) {
-
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
-                        )
-                    }
-
-                    Text(
-                        text = "My Application",
-                        color = Color.White,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Spacer(
-                    modifier = Modifier.height(18.dp)
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White
                 )
-
-                // -------------------------------------------------
-                // ONE ROW STATUS
-                // -------------------------------------------------
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement =
-                        Arrangement.spacedBy(6.dp)
-                ) {
-
-                    StatusBox(
-                        modifier = Modifier.weight(1f),
-                        title = "Applied",
-                        number = totalApplications,
-                        numberColor = Purple
-                    )
-
-                    StatusBox(
-                        modifier = Modifier.weight(1f),
-                        title = "Accepted",
-                        number = acceptedCount,
-                        numberColor = Green
-                    )
-
-                    StatusBox(
-                        modifier = Modifier.weight(1f),
-                        title = "Pending",
-                        number = pendingCount,
-                        numberColor = Orange
-                    )
-
-                    StatusBox(
-                        modifier = Modifier.weight(1f),
-                        title = "Done",
-                        number = doneCount,
-                        numberColor = Blue
-                    )
-                }
             }
+
+            Text(
+                text = "My Applications",
+                color = Color.White,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(
+                modifier = Modifier.height(5.dp)
+            )
+
+            Text(
+                text = "Track your job applications",
+                color = Color.White.copy(alpha = 0.8f),
+                fontSize = 13.sp
+            )
         }
 
-        // Application List
-        if (isLoading) {
+        LazyColumn(
+            modifier = Modifier.weight(1f),
 
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
+            contentPadding =
+                PaddingValues(
+                    horizontal = 16.dp,
+                    vertical = 16.dp
+                ),
 
-                Text(
-                    text = "Loading applications...",
-                    color = GreyText
-                )
-            }
+            verticalArrangement =
+                Arrangement.spacedBy(14.dp)
+        ) {
 
-        } else if (applications.isEmpty()) {
+            // STATISTICS
+            item {
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                contentAlignment = Alignment.Center
-            ) {
+                Row(
+                    modifier =
+                        Modifier.fillMaxWidth(),
+                    horizontalArrangement =
+                        Arrangement.spacedBy(8.dp)
+                ) {
 
-                Text(
-                    text = "You have not applied for any jobs yet.",
-                    color = GreyText,
-                    fontSize = 16.sp
-                )
-            }
-
-        } else {
-
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement =
-                    Arrangement.spacedBy(14.dp),
-                contentPadding =
-                    androidx.compose.foundation.layout.PaddingValues(
-                        top = 16.dp,
-                        bottom = 16.dp
+                    ApplicationStatCard(
+                        modifier =
+                            Modifier.weight(1f),
+                        title = "Applied",
+                        value = total.toString(),
+                        color = Purple
                     )
-            ) {
+
+                    ApplicationStatCard(
+                        modifier =
+                            Modifier.weight(1f),
+                        title = "Pending",
+                        value = pending.toString(),
+                        color = Orange
+                    )
+
+                    ApplicationStatCard(
+                        modifier =
+                            Modifier.weight(1f),
+                        title = "Accepted",
+                        value = accepted.toString(),
+                        color = Green
+                    )
+
+                    ApplicationStatCard(
+                        modifier =
+                            Modifier.weight(1f),
+                        title = "Done",
+                        value = done.toString(),
+                        color = Blue
+                    )
+                }
+            }
+
+            if (isLoading) {
+
+                item {
+
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(40.dp),
+                        contentAlignment =
+                            Alignment.Center
+                    ) {
+
+                        Text(
+                            text = "Loading applications...",
+                            color = Grey
+                        )
+                    }
+                }
+
+            } else if (applications.isEmpty()) {
+
+                item {
+
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(40.dp),
+                        contentAlignment =
+                            Alignment.Center
+                    ) {
+
+                        Text(
+                            text =
+                                "You haven't applied for any gigs yet.",
+                            color = Grey
+                        )
+                    }
+                }
+
+            } else {
 
                 items(
                     items = applications,
                     key = {
                         it.first.id
                     }
-                ) { applicationPair ->
+                ) { pair ->
+
+                    val application = pair.first
+                    val job = pair.second
 
                     ApplicationCard(
-                        application = applicationPair.first,
-                        job = applicationPair.second,
-                        onAcceptOffer = {
+                        application = application,
+                        job = job,
 
-                            scope.launch {
+                        onStatusChanged = {
 
-                                repository.updateApplicationStatus(
-                                    applicationPair.first.id,
-                                    "done_accepted"
-                                )
+                            if (userId != null) {
 
-                                applications =
-                                    repository.getApplicationsForJobSeeker(
-                                        currentUserId ?: return@launch
-                                    )
-                            }
-                        },
-                        onRejectOffer = {
+                                scope.launch {
 
-                            scope.launch {
-
-                                repository.updateApplicationStatus(
-                                    applicationPair.first.id,
-                                    "done_rejected"
-                                )
-
-                                applications =
-                                    repository.getApplicationsForJobSeeker(
-                                        currentUserId ?: return@launch
-                                    )
+                                    applications =
+                                        repository
+                                            .getApplicationsForJobSeeker(
+                                                applicantId =
+                                                    userId
+                                            )
+                                }
                             }
                         }
                     )
@@ -305,299 +297,288 @@ fun JobSeekerAppliedScreen(
             }
         }
 
-        // Bottom Navigation
+        // BOTTOM NAVIGATION
         JobSeekerNavBar(
-            selectedItem = JobSeekerNavItem.APPLIED,
-            onHomeClick = onHomeClick,
-            onExploreClick = onExploreClick,
+            selectedItem =
+                JobSeekerNavItem.APPLIED,
+
+            onHomeClick =
+                onHomeClick,
+
+            onExploreClick =
+                onExploreClick,
+
             onAppliedClick = {},
-            onProfileClick = onProfileClick
+
+            onProfileClick =
+                onProfileClick
         )
     }
 }
 
 
-// Status Box
 @Composable
-private fun StatusBox(
-    modifier: Modifier,
+private fun ApplicationStatCard(
+    modifier: Modifier = Modifier,
     title: String,
-    number: Int,
-    numberColor: Color
+    value: String,
+    color: Color
 ) {
 
-    Column(
-        modifier = modifier
-            .clip(
-                RoundedCornerShape(10.dp)
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(
+            containerColor =
+                color.copy(alpha = 0.08f)
+        ),
+        elevation =
+            CardDefaults.cardElevation(
+                defaultElevation = 0.dp
             )
-            .background(Color.White)
-            .padding(
-                vertical = 8.dp,
-                horizontal = 3.dp
-            ),
-        horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
-        Text(
-            text = title,
-            fontSize = 11.sp,
-            color = GreyText,
-            maxLines = 1
-        )
+        Column(
+            modifier = Modifier.padding(
+                horizontal = 8.dp,
+                vertical = 12.dp
+            ),
 
-        Spacer(
-            modifier = Modifier.height(2.dp)
-        )
+            horizontalAlignment =
+                Alignment.CenterHorizontally
+        ) {
 
-        Text(
-            text = number.toString(),
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = numberColor
-        )
+            Text(
+                text = value,
+                color = color,
+                fontSize = 20.sp,
+                fontWeight =
+                    FontWeight.Bold
+            )
+
+            Spacer(
+                modifier =
+                    Modifier.height(3.dp)
+            )
+
+            Text(
+                text = title,
+                color = Grey,
+                fontSize = 10.sp
+            )
+        }
     }
 }
 
 
-// Application Card
 @Composable
 private fun ApplicationCard(
     application: JobApplicationDto,
     job: JobSummaryDto,
-    onAcceptOffer: () -> Unit,
-    onRejectOffer: () -> Unit
+    onStatusChanged: () -> Unit
 ) {
 
-    val status = application.status
+    val repository = remember {
+        ApplicationRepository()
+    }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 3.dp
-        )
+        modifier =
+            Modifier.fillMaxWidth(),
+
+        shape =
+            RoundedCornerShape(14.dp),
+
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    Color.White
+            ),
+
+        elevation =
+            CardDefaults.cardElevation(
+                defaultElevation = 2.dp
+            )
     ) {
 
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier =
+                Modifier.padding(16.dp)
         ) {
 
-            // Content
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top
-            ) {
-
-                Text(
-                    text = job.title,
-                    modifier = Modifier.weight(1f),
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = DarkText
-                )
-
-                Spacer(
-                    modifier = Modifier.width(8.dp)
-                )
-
-                StatusPill(
-                    status = status
-                )
-            }
+            Text(
+                text = job.title,
+                fontSize = 17.sp,
+                fontWeight =
+                    FontWeight.Bold
+            )
 
             Spacer(
-                modifier = Modifier.height(8.dp)
+                modifier =
+                    Modifier.height(5.dp)
             )
 
             Text(
                 text = job.category,
-                fontSize = 14.sp,
-                color = GreyText
+                fontSize = 13.sp,
+                color = Grey
             )
 
             Spacer(
-                modifier = Modifier.height(6.dp)
+                modifier =
+                    Modifier.height(5.dp)
             )
 
             Text(
-                text = "📍 ${job.location}",
-                fontSize = 14.sp,
-                color = GreyText
+                text = job.location,
+                fontSize = 13.sp,
+                color = Grey
             )
 
             Spacer(
-                modifier = Modifier.height(12.dp)
+                modifier =
+                    Modifier.height(8.dp)
             )
 
-            // -------------------------------------------------
-            // SALARY + DATE
-            // -------------------------------------------------
+            Text(
+                text =
+                    "RM ${job.salary} / ${job.salaryPeriod}",
+                color = Purple,
+                fontSize = 14.sp,
+                fontWeight =
+                    FontWeight.Bold
+            )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Spacer(
+                modifier =
+                    Modifier.height(12.dp)
+            )
 
-                Text(
-                    text = "RM ${job.salary} / ${job.salaryPeriod}",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Purple
-                )
+            when (application.status) {
 
-                Spacer(
-                    modifier = Modifier.weight(1f)
-                )
+                "pending" -> {
 
-                Text(
-                    text = "Applied ${formatAppliedDate(application.appliedAt)}",
-                    fontSize = 12.sp,
-                    color = GreyText
-                )
-            }
-
-            // Button Response Offer
-            if (status == "accepted") {
-
-                Spacer(
-                    modifier = Modifier.height(16.dp)
-                )
-
-                Text(
-                    text = "The employer has accepted your application.",
-                    fontSize = 14.sp,
-                    color = Green,
-                    fontWeight = FontWeight.Medium
-                )
-
-                Spacer(
-                    modifier = Modifier.height(10.dp)
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement =
-                        Arrangement.spacedBy(8.dp)
-                ) {
-
-                    Button(
-                        onClick = onAcceptOffer,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Green
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null
-                        )
-
-                        Spacer(
-                            modifier = Modifier.width(4.dp)
-                        )
-
-                        Text(
-                            text = "Accept Offer"
-                        )
-                    }
-
-                    OutlinedButton(
-                        onClick = onRejectOffer,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = null
-                        )
-
-                        Spacer(
-                            modifier = Modifier.width(4.dp)
-                        )
-
-                        Text(
-                            text = "Reject Offer"
-                        )
-                    }
-                }
-            }
-
-            // Pending Status
-            if (status == "pending") {
-
-                Spacer(
-                    modifier = Modifier.height(12.dp)
-                )
-
-                OutlinedButton(
-                    onClick = {},
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = false,
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-
-                    Text(
-                        text = "Waiting for employer response"
+                    StatusText(
+                        text =
+                            "Waiting for employer response",
+                        color = Orange
                     )
                 }
-            }
 
-            // Done Status
-            if (status == "done_accepted") {
-
-                Spacer(
-                    modifier = Modifier.height(12.dp)
-                )
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(
-                            RoundedCornerShape(8.dp)
-                        )
-                        .background(LightGreen)
-                        .padding(12.dp)
-                ) {
+                "accepted" -> {
 
                     Text(
-                        text = "Done — Accepted Offer",
+                        text = "Application Accepted!",
                         color = Green,
-                        fontWeight = FontWeight.Bold
+                        fontWeight =
+                            FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(10.dp)
+                    )
+
+                    Row(
+                        modifier =
+                            Modifier.fillMaxWidth(),
+                        horizontalArrangement =
+                            Arrangement.spacedBy(8.dp)
+                    ) {
+
+                        Button(
+                            onClick = {
+
+                                kotlinx.coroutines.MainScope()
+                                    .launch {
+
+                                        repository
+                                            .updateApplicationStatus(
+                                                applicationId =
+                                                    application.id,
+                                                status =
+                                                    "done_accepted"
+                                            )
+
+                                        onStatusChanged()
+                                    }
+                            },
+
+                            modifier =
+                                Modifier.weight(1f),
+
+                            colors =
+                                ButtonDefaults.buttonColors(
+                                    containerColor =
+                                        Green
+                                )
+                        ) {
+
+                            Text(
+                                text = "Accept Offer"
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+
+                                kotlinx.coroutines.MainScope()
+                                    .launch {
+
+                                        repository
+                                            .updateApplicationStatus(
+                                                applicationId =
+                                                    application.id,
+                                                status =
+                                                    "done_rejected"
+                                            )
+
+                                        onStatusChanged()
+                                    }
+                            },
+
+                            modifier =
+                                Modifier.weight(1f),
+
+                            colors =
+                                ButtonDefaults.buttonColors(
+                                    containerColor =
+                                        Color.Gray
+                                )
+                        ) {
+
+                            Text(
+                                text = "Reject Offer"
+                            )
+                        }
+                    }
+                }
+
+                "done_accepted" -> {
+
+                    StatusText(
+                        text =
+                            "Done — Accepted Offer",
+                        color = Blue
                     )
                 }
-            }
 
-            // -------------------------------------------------
-            // DONE REJECTED
-            // -------------------------------------------------
+                "done_rejected" -> {
 
-            if (status == "done_rejected") {
+                    StatusText(
+                        text =
+                            "Done — Rejected Offer",
+                        color = Blue
+                    )
+                }
 
-                Spacer(
-                    modifier = Modifier.height(12.dp)
-                )
+                else -> {
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(
-                            RoundedCornerShape(8.dp)
-                        )
-                        .background(LightPurple)
-                        .padding(12.dp)
-                ) {
-
-                    Text(
-                        text = "Done — Rejected Offer",
-                        color = Purple,
-                        fontWeight = FontWeight.Bold
+                    StatusText(
+                        text =
+                            "Status: ${application.status}",
+                        color = Grey
                     )
                 }
             }
@@ -607,90 +588,27 @@ private fun ApplicationCard(
 
 
 @Composable
-private fun StatusPill(
-    status: String
+private fun StatusText(
+    text: String,
+    color: Color
 ) {
-
-    val background: Color
-    val textColor: Color
-    val text: String
-
-    when (status) {
-
-        "accepted" -> {
-            background = LightGreen
-            textColor = Green
-            text = "Accepted"
-        }
-
-        "pending" -> {
-            background = LightOrange
-            textColor = Orange
-            text = "Pending"
-        }
-
-        "done_accepted" -> {
-            background = LightBlue
-            textColor = Blue
-            text = "Done"
-        }
-
-        "done_rejected" -> {
-            background = LightPurple
-            textColor = Purple
-            text = "Done"
-        }
-
-        else -> {
-            background = LightPurple
-            textColor = Purple
-            text = "Applied"
-        }
-    }
 
     Box(
         modifier = Modifier
-            .clip(
-                RoundedCornerShape(50.dp)
+            .fillMaxWidth()
+            .background(
+                color.copy(alpha = 0.08f),
+                RoundedCornerShape(8.dp)
             )
-            .background(background)
-            .padding(
-                horizontal = 10.dp,
-                vertical = 5.dp
-            )
+            .padding(12.dp)
     ) {
 
         Text(
             text = text,
-            color = textColor,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold
+            color = color,
+            fontSize = 13.sp,
+            fontWeight =
+                FontWeight.Medium
         )
-    }
-}
-
-private fun formatAppliedDate(
-    date: String?
-): String {
-
-    if (date.isNullOrBlank()) {
-        return "-"
-    }
-
-    return try {
-
-        val parsed =
-            java.time.OffsetDateTime.parse(date)
-
-        val formatter =
-            java.time.format.DateTimeFormatter.ofPattern(
-                "dd MMM yyyy"
-            )
-
-        parsed.format(formatter)
-
-    } catch (e: Exception) {
-
-        date.take(10)
     }
 }

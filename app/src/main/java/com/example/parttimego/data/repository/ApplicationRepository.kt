@@ -163,21 +163,76 @@ class ApplicationRepository {
         }
     }
 
+    // Check if Job Seeker already applied
+    suspend fun hasApplied(
+        jobId: String,
+        applicantId: String
+    ): Boolean {
+
+        return try {
+
+            val applications =
+                postgrest["job_applications"]
+                    .select {
+                        filter {
+                            eq(
+                                "job_id",
+                                jobId
+                            )
+
+                            eq(
+                                "applicant_id",
+                                applicantId
+                            )
+                        }
+                    }
+                    .decodeList<JobApplicationDto>()
+
+            applications.isNotEmpty()
+
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     suspend fun applyForJob(
         jobId: String,
         applicantId: String
     ) {
-        try {
-            postgrest["job_applications"].insert(
+        postgrest["job_applications"]
+            .insert(
                 mapOf(
                     "job_id" to jobId,
                     "applicant_id" to applicantId,
                     "status" to "pending",
-                    "applied_at" to java.time.OffsetDateTime.now().toString()
+                    "applied_at" to
+                            java.time.OffsetDateTime
+                                .now()
+                                .toString()
                 )
             )
-        } catch (e: Exception) {
-            // Ignore network/database error for now
-        }
+    }
+
+    // Cancel Application
+    suspend fun cancelApplication(
+        jobId: String,
+        applicantId: String
+    ) {
+
+        postgrest["job_applications"]
+            .delete {
+                filter {
+
+                    eq(
+                        "job_id",
+                        jobId
+                    )
+
+                    eq(
+                        "applicant_id",
+                        applicantId
+                    )
+                }
+            }
     }
 }
