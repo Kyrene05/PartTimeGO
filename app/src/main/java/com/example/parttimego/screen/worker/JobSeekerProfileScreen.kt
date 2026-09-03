@@ -342,6 +342,10 @@ private fun AvailabilityCard(
         mutableStateOf(availableDays)
     }
 
+    var showDaySelection by remember(available) {
+        mutableStateOf(!available)
+    }
+
     val days = listOf(
         "Monday",
         "Tuesday",
@@ -359,25 +363,31 @@ private fun AvailabilityCard(
         color = Color.White
     ) {
 
-        Row(
+        Column(
             modifier = Modifier.padding(12.dp, 10.dp)
         ) {
 
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(7.dp))
-                    .background(Color(0xFF118C20).copy(alpha = 0.5f)),
-                contentAlignment = Alignment.Center
+            Row(
+                verticalAlignment = Alignment.CenterVertically
             ) {
 
-                Icon(
-                    imageVector = Icons.Default.CalendarMonth,
-                    contentDescription = null,
-                    tint = Color(0xFF4D8C62),
-                    modifier = Modifier.size(36.dp)
-                )
-            }
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(
+                            Color(0xFF118C20).copy(alpha = 0.5f)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+
+                    Icon(
+                        imageVector = Icons.Default.CalendarMonth,
+                        contentDescription = null,
+                        tint = Color(0xFF4D8C62),
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
 
             Spacer(Modifier.width(10.dp))
 
@@ -404,8 +414,9 @@ private fun AvailabilityCard(
 
                     // If user turns ON, they are available every day
                     if (value) {
-                        selectedDays = emptyList()
-                        onAvailableDaysChange(emptyList())
+                        showDaySelection = false
+                    } else {
+                        showDaySelection = true
                     }
                 },
                 colors = SwitchDefaults.colors(
@@ -418,46 +429,50 @@ private fun AvailabilityCard(
         }
 
         // Only show day selection when toggle is OFF
-        if (!available){
-            Spacer(Modifier.height(10.dp))
+            if (!available && showDaySelection) {
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ){
-                days.forEach { day ->
-                    val shortDay = when (day) {
-                        "Monday" -> "M"
-                        "Tuesday" -> "T"
-                        "Wednesday" -> "W"
-                        "Thursday" -> "T"
-                        "Friday" -> "F"
-                        "Saturday" -> "S"
-                        else -> "S"
-                    }
-                    DayButton(
-                        day = shortDay,
-                        selected = day in selectedDays,
-                        onClick = {
+                Spacer(Modifier.height(10.dp))
 
-                            selectedDays =
-                                if (day in selectedDays) {
-                                    selectedDays - day
-                                } else {
-                                    selectedDays + day
-                                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
 
-                            onAvailableDaysChange(
-                                selectedDays
-                            )
+                    days.forEach { day ->
+
+                        val shortDay = when (day) {
+                            "Monday" -> "M"
+                            "Tuesday" -> "T"
+                            "Wednesday" -> "W"
+                            "Thursday" -> "T"
+                            "Friday" -> "F"
+                            "Saturday" -> "S"
+                            else -> "S"
                         }
-                    )
+
+                        DayButton(
+                            day = shortDay,
+                            selected = day in selectedDays,
+                            onClick = {
+
+                                selectedDays =
+                                    if (day in selectedDays) {
+                                        selectedDays - day
+                                    } else {
+                                        selectedDays + day
+                                    }
+
+                                onAvailableDaysChange(
+                                    selectedDays
+                                )
+                            }
+                        )
+                    }
                 }
             }
         }
     }
 }
-
 
 
 @Composable

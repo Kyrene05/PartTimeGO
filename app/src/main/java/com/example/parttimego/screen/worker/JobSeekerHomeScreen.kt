@@ -80,7 +80,7 @@ private val TagRed = Color(0xFFE53935)
 
 @Composable
 fun JobSeekerHomeScreen(
-    worker: Worker? = null,
+    worker: Worker,
     onGigClick: (String) -> Unit = {},
     onExploreClick: () -> Unit = {},
     onViewTodayGigsClick: () -> Unit = onExploreClick,
@@ -99,7 +99,7 @@ fun JobSeekerHomeScreen(
 
     JobSeekerHomeContent(
         jobs = jobs,
-        userName = worker?.workerName?: "Job Seeker",
+        userName = worker.workerName,
         onGigClick = onGigClick,
         onExploreClick = onExploreClick,
         onViewTodayGigsClick = onViewTodayGigsClick,
@@ -113,7 +113,7 @@ fun JobSeekerHomeScreen(
 @Composable
 fun JobSeekerHomeContent(
     jobs: List<JobEntity>,
-    userName: String = "User",
+    userName: String = "",
     onGigClick: (String) -> Unit = {},
     onExploreClick: () -> Unit = {},
     onViewTodayGigsClick: () -> Unit = onExploreClick,
@@ -150,6 +150,33 @@ fun JobSeekerHomeContent(
             .auth
             .currentUserOrNull()
             ?.id
+
+    LaunchedEffect(userId, jobs) {
+
+        if (userId != null) {
+
+            val appliedIds = mutableSetOf<String>()
+
+            jobs.forEach { job ->
+
+                try {
+
+                    if (
+                        repository.hasApplied(
+                            jobId = job.id,
+                            applicantId = userId
+                        )
+                    ) {
+                        appliedIds.add(job.id)
+                    }
+
+                } catch (_: Exception) {
+                }
+            }
+
+            appliedJobIds = appliedIds
+        }
+    }
 
     val today = LocalDate.now()
 
@@ -394,6 +421,8 @@ fun JobSeekerHomeContent(
 
                             JobSeekerJobCard(
                                 job = job,
+                                isApplied =
+                                    job.id in appliedJobIds,
                                 onClick = {
                                     onGigClick(job.id)
                                 },
@@ -731,7 +760,7 @@ private fun JobSeekerHomeHeader(
         ) {
 
             Text(
-                text = "Good Morning",
+                text = "Welcome",
                 color = Color.White,
                 fontSize = 14.sp
             )
@@ -777,11 +806,14 @@ private fun TodayOpportunityCard(
     onClick: () -> Unit
 ) {
 
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .alpha(if (enabled) 1f else 0.6f),
         shape = RoundedCornerShape(16.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Black),
-        color = Color.White
+        colors = CardDefaults.cardColors(
+            containerColor = AccentGreen
+        )
     ) {
 
         Row(
@@ -868,44 +900,35 @@ private fun CategoryGrid(
         "Other"
     )
 
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Black),
-        color = Color.White
-    ){
-        Column(
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
 
-            categories.chunked(2).forEach { rowCategories ->
+        categories.chunked(3).forEach { rowCategories ->
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
 
-                    rowCategories.forEach { category ->
+                rowCategories.forEach { category ->
 
-                        CategoryBox(
-                            title = category,
-                            count = categoryCounts[category] ?: 0,
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                onCategoryClick(category)
-                            }
-                        )
-                    }
+                    CategoryBox(
+                        title = category,
+                        count = categoryCounts[category] ?: 0,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            onCategoryClick(category)
+                        }
+                    )
+                }
 
-                    if (rowCategories.size < 2) {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
+                if (rowCategories.size < 2) {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
     }
-
-
 }
 
 
@@ -923,7 +946,7 @@ private fun CategoryBox(
         },
         shape = RoundedCornerShape(12.dp),
         color = Color.White,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE0E0E0))
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Black)
     ) {
 
         Column(
@@ -957,6 +980,7 @@ private fun CategoryBox(
 @Composable
 private fun JobSeekerJobCard(
     job: JobEntity,
+    isApplied: Boolean,
     onClick: () -> Unit,
     onApplyClick: () -> Unit
 ) {
@@ -1064,15 +1088,23 @@ private fun JobSeekerJobCard(
 
                 Button(
                     onClick = onApplyClick,
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AccentGreen
-                    )
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor =
+                                if (isApplied)
+                                    Color.Gray
+                                else
+                                    AccentGreen
+                        ),
+                    shape =
+                        RoundedCornerShape(10.dp)
                 ) {
 
                     Text(
-                        text = "Apply Now",
-                        fontSize = 13.sp
+                        if (isApplied)
+                            "Applied"
+                        else
+                            "Apply Now"
                     )
                 }
             }

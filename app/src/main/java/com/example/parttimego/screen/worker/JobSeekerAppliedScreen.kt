@@ -15,9 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -83,19 +81,20 @@ fun JobSeekerAppliedScreen(
         mutableStateOf(true)
     }
 
-    LaunchedEffect(userId) {
-
+    val refreshApplications: () -> Unit = {
         if (userId != null) {
-
-            isLoading = true
-
-            applications =
-                repository.getApplicationsForJobSeeker(
+            scope.launch {
+                isLoading = true
+                applications = repository.getApplicationsForJobSeeker(
                     applicantId = userId
                 )
-
-            isLoading = false
+                isLoading = false
+            }
         }
+    }
+
+    LaunchedEffect(userId) {
+        refreshApplications()
     }
 
     val total =
@@ -151,61 +150,45 @@ fun JobSeekerAppliedScreen(
                 modifier = Modifier.height(10.dp)
             )
 
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-
-                contentPadding =
-                    PaddingValues(
-                        horizontal = 16.dp,
-                        vertical = 16.dp
-                    ),
-
-                verticalArrangement =
-                    Arrangement.spacedBy(14.dp)
+            // Status Row
+            Row(
+                modifier =
+                    Modifier.fillMaxWidth(),
+                horizontalArrangement =
+                    Arrangement.spacedBy(8.dp)
             ) {
-                // STATISTICS
-                item {
 
-                    Row(
-                        modifier =
-                            Modifier.fillMaxWidth(),
-                        horizontalArrangement =
-                            Arrangement.spacedBy(8.dp)
-                    ) {
+                ApplicationStatCard(
+                    modifier =
+                        Modifier.weight(1f),
+                    title = "Applied",
+                    value = total.toString(),
+                    color = Purple
+                )
 
-                        ApplicationStatCard(
-                            modifier =
-                                Modifier.weight(1f),
-                            title = "Applied",
-                            value = total.toString(),
-                            color = Purple
-                        )
+                ApplicationStatCard(
+                    modifier =
+                        Modifier.weight(1f),
+                    title = "Pending",
+                    value = pending.toString(),
+                    color = Orange
+                )
 
-                        ApplicationStatCard(
-                            modifier =
-                                Modifier.weight(1f),
-                            title = "Pending",
-                            value = pending.toString(),
-                            color = Orange
-                        )
+                ApplicationStatCard(
+                    modifier =
+                        Modifier.weight(1f),
+                    title = "Accepted",
+                    value = accepted.toString(),
+                    color = Green
+                )
 
-                        ApplicationStatCard(
-                            modifier =
-                                Modifier.weight(1f),
-                            title = "Accepted",
-                            value = accepted.toString(),
-                            color = Green
-                        )
-
-                        ApplicationStatCard(
-                            modifier =
-                                Modifier.weight(1f),
-                            title = "Done",
-                            value = done.toString(),
-                            color = Blue
-                        )
-                    }
-                }
+                ApplicationStatCard(
+                    modifier =
+                        Modifier.weight(1f),
+                    title = "Done",
+                    value = done.toString(),
+                    color = Blue
+                )
             }
         }
 
@@ -278,19 +261,29 @@ fun JobSeekerAppliedScreen(
                         application = application,
                         job = job,
 
-                        onStatusChanged = {
+                        onAcceptOffer = {
 
-                            if (userId != null) {
+                            scope.launch {
 
-                                scope.launch {
+                                repository.updateApplicationStatus(
+                                    application.id,
+                                    "done_accepted"
+                                )
 
-                                    applications =
-                                        repository
-                                            .getApplicationsForJobSeeker(
-                                                applicantId =
-                                                    userId
-                                            )
-                                }
+                                refreshApplications()
+                            }
+                        },
+
+                        onRejectOffer = {
+
+                            scope.launch {
+
+                                repository.updateApplicationStatus(
+                                    application.id,
+                                    "done_rejected"
+                                )
+
+                                refreshApplications()
                             }
                         }
                     )
@@ -327,7 +320,7 @@ private fun ApplicationStatCard(
 ) {
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color.Black),
         color = Color.White
@@ -370,12 +363,9 @@ private fun ApplicationStatCard(
 private fun ApplicationCard(
     application: JobApplicationDto,
     job: JobSummaryDto,
-    onStatusChanged: () -> Unit
+    onAcceptOffer: () -> Unit,
+    onRejectOffer: () -> Unit
 ) {
-
-    val repository = remember {
-        ApplicationRepository()
-    }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -471,69 +461,15 @@ private fun ApplicationCard(
                     ) {
 
                         Button(
-                            onClick = {
-
-                                kotlinx.coroutines.MainScope()
-                                    .launch {
-
-                                        repository
-                                            .updateApplicationStatus(
-                                                applicationId =
-                                                    application.id,
-                                                status =
-                                                    "done_accepted"
-                                            )
-
-                                        onStatusChanged()
-                                    }
-                            },
-
-                            modifier =
-                                Modifier.weight(1f),
-
-                            colors =
-                                ButtonDefaults.buttonColors(
-                                    containerColor =
-                                        Green
-                                )
+                            onClick = onAcceptOffer
                         ) {
-
-                            Text(
-                                text = "Accept Offer"
-                            )
+                            Text("Accept Offer")
                         }
 
-                        Button(
-                            onClick = {
-
-                                kotlinx.coroutines.MainScope()
-                                    .launch {
-
-                                        repository
-                                            .updateApplicationStatus(
-                                                applicationId =
-                                                    application.id,
-                                                status =
-                                                    "done_rejected"
-                                            )
-
-                                        onStatusChanged()
-                                    }
-                            },
-
-                            modifier =
-                                Modifier.weight(1f),
-
-                            colors =
-                                ButtonDefaults.buttonColors(
-                                    containerColor =
-                                        Color.Gray
-                                )
+                        OutlinedButton(
+                            onClick = onRejectOffer
                         ) {
-
-                            Text(
-                                text = "Reject Offer"
-                            )
+                            Text("Reject Offer")
                         }
                     }
                 }
@@ -551,8 +487,8 @@ private fun ApplicationCard(
 
                     StatusText(
                         text =
-                            "Done — Rejected Offer",
-                        color = Blue
+                            "Done — Declined Offer",
+                        color = Grey
                     )
                 }
 
@@ -560,7 +496,7 @@ private fun ApplicationCard(
 
                     StatusText(
                         text =
-                            "Status: ${application.status}",
+                            application.status,
                         color = Grey
                     )
                 }

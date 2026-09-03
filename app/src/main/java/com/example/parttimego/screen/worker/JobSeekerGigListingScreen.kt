@@ -206,25 +206,30 @@ fun JobSeekerGigListingScreen(
         jobViewModel.refreshAllJobs()
     }
 
-    LaunchedEffect(jobs, userId) {
+    LaunchedEffect(userId, jobs) {
 
         if (userId != null) {
 
-            val applied = mutableSetOf<String>()
+            val appliedIds = mutableSetOf<String>()
 
             jobs.forEach { job ->
 
-                if (
-                    repository.hasApplied(
-                        jobId = job.id,
-                        applicantId = userId
-                    )
-                ) {
-                    applied.add(job.id)
+                try {
+
+                    if (
+                        repository.hasApplied(
+                            jobId = job.id,
+                            applicantId = userId
+                        )
+                    ) {
+                        appliedIds.add(job.id)
+                    }
+
+                } catch (_: Exception) {
                 }
             }
 
-            appliedJobIds = applied
+            appliedJobIds = appliedIds
         }
     }
 
@@ -253,7 +258,13 @@ fun JobSeekerGigListingScreen(
                         job.location.contains(
                             searchText,
                             ignoreCase = true
-                        )
+                        ) ||
+                        (
+                                job.companyName?.contains(
+                                    searchText,
+                                    ignoreCase = true
+                                ) == true
+                                )
 
             val matchesCategory =
                 selectedCategory == "All" ||

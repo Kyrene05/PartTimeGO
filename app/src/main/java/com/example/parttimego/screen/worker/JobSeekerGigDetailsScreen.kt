@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,7 +59,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import java.util.Locale
 
 private val Purple = Color(0xFF262075)
-private val LightPurple = Color(0xFFF1EEFF)
 private val Green = Color(0xFF22A447)
 private val LightBlue = Color(0xFFEAF4FF)
 private val GreyText = Color(0xFF777777)
@@ -86,8 +86,12 @@ fun JobSeekerGigDetailScreen(
             .currentUserOrNull()
             ?.id
 
-    var job by remember {
-        mutableStateOf<JobEntity?>(null)
+    val jobs by jobViewModel
+        .getAllJobs()
+        .collectAsState(initial = emptyList())
+
+    val job = jobs.find {
+        it.id == jobId
     }
 
     var isLoading by remember {
@@ -100,6 +104,34 @@ fun JobSeekerGigDetailScreen(
 
     var isApplied by remember {
         mutableStateOf(false)
+    }
+
+    var errorMessage by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    if (errorMessage != null) {
+
+        AlertDialog(
+            onDismissRequest = {
+                errorMessage = null
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        errorMessage = null
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            title = {
+                Text("Error")
+            },
+            text = {
+                Text(errorMessage!!)
+            }
+        )
     }
 
     var showApplyDialog by remember {
@@ -115,22 +147,9 @@ fun JobSeekerGigDetailScreen(
         jobViewModel.refreshAllJobs()
     }
 
-    LaunchedEffect(jobId) {
-
-        isLoading = true
-
-        jobViewModel.getAllJobs().collect { jobs ->
-
-            val foundJob =
-                jobs.firstOrNull {
-                    it.id == jobId
-                }
-
-            if (foundJob != null) {
-
-                job = foundJob
-                isLoading = false
-            }
+    LaunchedEffect(jobs) {
+        if (jobs.isNotEmpty()) {
+            isLoading = false
         }
     }
 
@@ -538,7 +557,7 @@ fun JobSeekerGigDetailScreen(
     }
 
     // APPLY DIALOG
-    if (showApplyDialog) {
+    if (showApplyDialog && job != null) {
 
         AlertDialog(
             onDismissRequest = {
@@ -567,16 +586,19 @@ fun JobSeekerGigDetailScreen(
                                 try {
 
                                     repository.applyForJob(
-                                        jobId = jobId,
+                                        jobId = job.id,
                                         applicantId = userId
                                     )
 
                                     isApplied = true
 
-                                } catch (_: Exception) {
-                                }
+                                } catch (e: Exception) {
 
-                                showApplyDialog = false
+                                    errorMessage =
+                                        e.message ?: "Unable to apply for this job."
+                                } finally {
+                                    showApplyDialog = false
+                                }
                             }
                         }
                     }
@@ -599,7 +621,7 @@ fun JobSeekerGigDetailScreen(
     }
 
     // CANCEL DIALOG
-    if (showCancelDialog) {
+    if (showCancelDialog && job != null) {
 
         AlertDialog(
             onDismissRequest = {
@@ -628,16 +650,19 @@ fun JobSeekerGigDetailScreen(
                                 try {
 
                                     repository.cancelApplication(
-                                        jobId = jobId,
+                                        jobId = job.id,
                                         applicantId = userId
                                     )
 
                                     isApplied = false
 
-                                } catch (_: Exception) {
-                                }
+                                } catch (e: Exception) {
 
-                                showCancelDialog = false
+                                    errorMessage =
+                                        e.message ?: "Unable to cancel application."
+                                } finally {
+                                    showCancelDialog = false
+                                }
                             }
                         }
                     }
@@ -668,7 +693,7 @@ private fun InfoBox(
 ) {
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color.Black),
         color = Color.White
