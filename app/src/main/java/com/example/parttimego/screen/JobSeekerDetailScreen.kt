@@ -26,7 +26,6 @@ import com.example.parttimego.ui.theme.DarkNavy
 import com.example.parttimego.ui.theme.SoftGrey
 import com.example.parttimego.viewmodel.JobSeekerUiState
 
-// 数据模型：定义单条 Gig 历史记录
 data class GigExperienceItem(
     val title: String,
     val companyName: String,
@@ -37,11 +36,10 @@ data class GigExperienceItem(
 @Composable
 fun JobSeekerDetailScreen(
     uiState: JobSeekerUiState,
-    ratingScore: Double = 5.0, // 默认评分
     onBackClick: () -> Unit = {}
 ) {
-    val completedGigsCount = uiState.completedGigsCount
     val gigExperiences = uiState.gigExperiences
+    val completedGigsCount = gigExperiences.size
 
     Scaffold(
         topBar = {
@@ -157,17 +155,28 @@ fun JobSeekerDetailScreen(
                                 color = Color.White.copy(alpha = 0.8f),
                                 fontSize = 13.sp
                             )
+                            Spacer(modifier = Modifier.height(2.dp))
                         }
 
+                        // 新增：顯示 Email (若有值才顯示)
+                        if (uiState.email.isNotBlank()) {
+                            Text(
+                                text = uiState.email,
+                                color = Color.White.copy(alpha = 0.8f),
+                                fontSize = 13.sp
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                        }
+
+                        // 已移除 Rate，僅保留已完成 Gigs 數量顯示
                         Text(
-                            text = "Rate: $ratingScore  •  $completedGigsCount ${if (completedGigsCount == 1) "gig" else "gigs"}",
+                            text = "$completedGigsCount ${if (completedGigsCount == 1) "completed gig" else "completed gigs"}",
                             color = Color.White.copy(alpha = 0.8f),
                             fontSize = 12.sp
                         )
                     }
                 }
 
-                // 内容白底卡片区域
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
@@ -180,7 +189,7 @@ fun JobSeekerDetailScreen(
                             .padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(20.dp)
                     ) {
-                        // Work Availability 卡片
+
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
@@ -382,19 +391,18 @@ fun JobSeekerDetailScreenPreview() {
                 userName = "Jane Doe",
                 gender = "Female",
                 phone = "+60123456789",
+                email = "janedoe@example.com",
                 aboutMe = "Responsible and punctual part-time job seeker with 2 years of retail experience.",
                 availability = false,
                 availableDays = listOf("Sat", "Sun"),
                 skills = listOf("Kotlin", "Jetpack Compose"),
                 preferredLocations = listOf("Penang", "Kuala Lumpur"),
-                completedGigsCount = 12,
                 gigExperiences = listOf(
                     GigExperienceItem("Event Assistant", "Sunway Carnival Mall", "2026-08-10"),
                     GigExperienceItem("Retail Sales Representative", "Queensbay Outlet", "2026-07-22"),
                     GigExperienceItem("Flyer Promoter", "Mid Valley KL", "2026-06-15")
                 )
-            ),
-            ratingScore = 4.9
+            )
         )
     }
 }

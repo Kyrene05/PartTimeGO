@@ -485,6 +485,7 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                     applicants = results.map { (app, job, profile) ->
                         ApplicantUiModel(
                             id = app.id,
+                            applicantUserId = app.applicantId,
                             name = profile?.fullName ?: "Applicant ${app.applicantId.take(8)}",
                             jobTitle = job.title,
                             location = job.location,
@@ -544,7 +545,10 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             val jobSeekerId = backStackEntry.arguments?.getString("jobSeekerId") ?: ""
 
             val viewModel: JobSeekerViewModel = viewModel(
-                factory = JobSeekerViewModelFactory(supabaseClient = SupabaseClient.client)
+                factory = JobSeekerViewModelFactory(
+                    supabaseClient = SupabaseClient.client,
+                    autoLoadOwnProfile = false
+                )
             )
 
             LaunchedEffect(jobSeekerId) {
@@ -894,9 +898,7 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
         // Setting Screen
         composable(route = Screen.JobSeekerSetting.route) {
             val viewModel: JobSeekerViewModel = viewModel(
-                factory = JobSeekerViewModelFactory(
-                    supabaseClient = SupabaseClient.client
-                )
+                factory = JobSeekerViewModelFactory(supabaseClient = SupabaseClient.client, autoLoadOwnProfile = false)
             )
 
             LaunchedEffect(Unit) {

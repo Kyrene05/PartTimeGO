@@ -37,6 +37,7 @@ import com.example.parttimego.ui.theme.PartTimeGOTheme
 // (or replace this entirely) without needing to rewrite the screen below.
 data class ApplicantUiModel(
     val id: String,
+    val applicantUserId: String,
     val name: String,
     val jobTitle: String,
     val location: String,
@@ -192,7 +193,7 @@ fun ManageApplicantsScreen(
                                     pendingAction = applicant to ApplicantStatus.ACCEPTED
                                 },
                                 onRejectClick = { pendingAction = applicant to ApplicantStatus.REJECTED },
-                                onViewProfileClick = { onViewProfileClick(applicant.id) }
+                                onViewProfileClick = { onViewProfileClick(applicant.applicantUserId) }
                             )
                         }
                     }
@@ -420,71 +421,6 @@ private fun StatusBadge(status: ApplicantStatus) {
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun ManageApplicantsScreenPreview() {
-    PartTimeGOTheme {
-        ManageApplicantsScreen(
-            applicants = listOf(
-                ApplicantUiModel(
-                    id = "1",
-                    name = "Derick Ang",
-                    jobTitle = "Event Crew",
-                    location = "Kuala Lumpur City Centre (KLCC)",
-                    salary = "RM 180 / day",
-                    appliedDate = "10 Jul 2026",
-                    status = ApplicantStatus.PENDING
-                ),
-                ApplicantUiModel(
-                    id = "2",
-                    name = "Sunny Kim",
-                    jobTitle = "Promoter",
-                    location = "Pavilion Mall",
-                    salary = "RM 100 / day",
-                    appliedDate = "10 Jul 2026",
-                    status = ApplicantStatus.PENDING
-                ),
-                ApplicantUiModel(
-                    id = "3",
-                    name = "Ahmad Faris",
-                    jobTitle = "Event Crew",
-                    location = "Kuala Lumpur City Centre (KLCC)",
-                    salary = "RM 150 / day",
-                    appliedDate = "10 Jul 2026",
-                    status = ApplicantStatus.PENDING
-                ),
-                ApplicantUiModel(
-                    id = "4",
-                    name = "Andrew Lim",
-                    jobTitle = "Event Crew",
-                    location = "Kuala Lumpur City Centre (KLCC)",
-                    salary = "RM 120 / day",
-                    appliedDate = "9 Jul 2026",
-                    status = ApplicantStatus.ACCEPTED
-                ),
-                ApplicantUiModel(
-                    id = "5",
-                    name = "Priya Devi",
-                    jobTitle = "F&B",
-                    location = "Gurney Plaza",
-                    salary = "RM 90 / day",
-                    appliedDate = "8 Jul 2026",
-                    status = ApplicantStatus.CONFIRMED
-                ),
-                ApplicantUiModel(
-                    id = "6",
-                    name = "Wei Liang",
-                    jobTitle = "Retail",
-                    location = "Queensbay Mall",
-                    salary = "RM 100 / day",
-                    appliedDate = "7 Jul 2026",
-                    status = ApplicantStatus.DECLINED
-                )
-            )
         )
     }
 }
