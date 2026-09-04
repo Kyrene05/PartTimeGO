@@ -84,14 +84,17 @@ data class JobSeekerUiState(
 
 class JobSeekerViewModel(
     private val supabaseClient: SupabaseClient,
-    private val repository: JobSeekerRepository? = null
+    private val repository: JobSeekerRepository? = null,
+    autoLoadOwnProfile: Boolean = true
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(JobSeekerUiState())
     val uiState: StateFlow<JobSeekerUiState> = _uiState.asStateFlow()
 
     init {
-        loadUserProfile()
+        if (autoLoadOwnProfile) {
+            loadUserProfile()
+        }
     }
 
     fun loadUserProfile() {
@@ -133,9 +136,8 @@ class JobSeekerViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                // Supabase 中的表名和字段名保持原样
                 val jobSeekerDetail = supabaseClient.postgrest["worker"]
-                    .select { filter { eq("worker_id", jobSeekerId) } }
+                    .select { filter { eq("user_id", jobSeekerId) } }
                     .decodeSingleOrNull<JobSeekerDetailDto>()
 
                 var profile: JobSeekerProfileDto? = null
@@ -148,36 +150,42 @@ class JobSeekerViewModel(
                 var totalGigsCount = 0
                 var recentGigs = emptyList<GigExperienceItem>()
 
+                // Wrap the Gigs query in its own `try-catch` block;
+                // a failure here shouldn't cause the entire profile to appear as a failure.
                 if (!jobSeekerDetail?.jobSeekerId.isNullOrBlank()) {
-                    // 计算完成的总 Gigs 数，后端字段为 worker_id
-                    val allCompletedGigs = supabaseClient.postgrest["gigs"]
-                        .select {
-                            filter {
-                                eq("worker_id", jobSeekerDetail!!.jobSeekerId!!)
-                                eq("status", "COMPLETED")
+                    try {
+                        val allCompletedGigs = supabaseClient.postgrest["gigs"]
+                            .select {
+                                filter {
+                                    eq("worker_id", jobSeekerDetail!!.jobSeekerId!!)
+                                    eq("status", "COMPLETED")
+                                }
                             }
-                        }
-                        .decodeList<GigHistoryDto>()
+                            .decodeList<GigHistoryDto>()
 
-                    totalGigsCount = allCompletedGigs.size
+                        totalGigsCount = allCompletedGigs.size
 
-                    recentGigs = supabaseClient.postgrest["gigs"]
-                        .select {
-                            filter {
-                                eq("worker_id", jobSeekerDetail!!.jobSeekerId!!)
-                                eq("status", "COMPLETED")
+                        recentGigs = supabaseClient.postgrest["gigs"]
+                            .select {
+                                filter {
+                                    eq("worker_id", jobSeekerDetail!!.jobSeekerId!!)
+                                    eq("status", "COMPLETED")
+                                }
+                                order("completed_at", order = Order.DESCENDING)
+                                limit(10)
                             }
-                            order("completed_at", order = Order.DESCENDING)
-                            limit(10)
-                        }
-                        .decodeList<GigHistoryDto>()
-                        .map { dto ->
-                            GigExperienceItem(
-                                title = dto.title ?: "Gig",
-                                companyName = dto.companyName ?: "",
-                                dateText = dto.completedAt?.take(10) ?: ""
-                            )
-                        }
+                            .decodeList<GigHistoryDto>()
+                            .map { dto ->
+                                GigExperienceItem(
+                                    title = dto.title ?: "Gig",
+                                    companyName = dto.companyName ?: "",
+                                    dateText = dto.completedAt?.take(10) ?: ""
+                                )
+                            }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        // gigs table missing/unavailable — leave count/list empty, don't fail the whole profile
+                    }
                 }
 
                 mapDtoToUiState(profile, jobSeekerDetail, "", null)
@@ -189,6 +197,7 @@ class JobSeekerViewModel(
                 }
 
             } catch (e: Exception) {
+                e.printStackTrace()
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -466,12 +475,13 @@ class JobSeekerViewModel(
 
 class JobSeekerViewModelFactory(
     private val supabaseClient: SupabaseClient,
-    private val repository: JobSeekerRepository? = null
+    private val repository: JobSeekerRepository? = null,
+    private val autoLoadOwnProfile: Boolean = true
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(JobSeekerViewModel::class.java)) {
-            return JobSeekerViewModel(supabaseClient, repository) as T
+            return JobSeekerViewModel(supabaseClient, repository, autoLoadOwnProfile) as T   // ← 加這個參數
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
