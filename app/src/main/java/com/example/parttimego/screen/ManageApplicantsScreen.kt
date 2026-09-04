@@ -62,7 +62,8 @@ fun ManageApplicantsScreen(
     onRejectClick: (String) -> Unit = {},
     onDashboardTabClick: () -> Unit = {},
     onPostTabClick: () -> Unit = {},
-    onProfileTabClick: () -> Unit = {}
+    onProfileTabClick: () -> Unit = {},
+    onViewProfileClick: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     var selectedFilter by remember { mutableStateOf(ApplicantStatus.PENDING) }
@@ -190,7 +191,8 @@ fun ManageApplicantsScreen(
                                     contactNote = ""
                                     pendingAction = applicant to ApplicantStatus.ACCEPTED
                                 },
-                                onRejectClick = { pendingAction = applicant to ApplicantStatus.REJECTED }
+                                onRejectClick = { pendingAction = applicant to ApplicantStatus.REJECTED },
+                                onViewProfileClick = { onViewProfileClick(applicant.id) }
                             )
                         }
                     }
@@ -300,7 +302,8 @@ private fun StatusTab(
 private fun ApplicantCard(
     applicant: ApplicantUiModel,
     onAcceptClick: () -> Unit,
-    onRejectClick: () -> Unit
+    onRejectClick: () -> Unit,
+    onViewProfileClick: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -331,7 +334,7 @@ private fun ApplicantCard(
                         color = DarkNavy,
                         modifier = Modifier
                             .clickable {
-                                // TODO: Navigate to applicant profile page later
+                                onViewProfileClick()
                             }
                             .padding(vertical = 4.dp, horizontal = 4.dp)
                     )

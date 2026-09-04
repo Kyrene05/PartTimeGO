@@ -111,8 +111,7 @@ class JobSeekerViewModel(
                     .select { filter { eq("id", userId) } }
                     .decodeSingleOrNull<JobSeekerProfileDto>()
 
-                // Supabase 中的表名仍为 "workers"
-                val jobSeekerDetail = supabaseClient.postgrest["workers"]
+                val jobSeekerDetail = supabaseClient.postgrest["worker"]
                     .select { filter { eq("user_id", userId) } }
                     .decodeSingleOrNull<JobSeekerDetailDto>()
 
@@ -135,7 +134,7 @@ class JobSeekerViewModel(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
                 // Supabase 中的表名和字段名保持原样
-                val jobSeekerDetail = supabaseClient.postgrest["workers"]
+                val jobSeekerDetail = supabaseClient.postgrest["worker"]
                     .select { filter { eq("worker_id", jobSeekerId) } }
                     .decodeSingleOrNull<JobSeekerDetailDto>()
 
@@ -270,8 +269,7 @@ class JobSeekerViewModel(
         viewModelScope.launch {
             try {
                 val userId = supabaseClient.auth.currentUserOrNull()?.id ?: return@launch
-                // 更新 Supabase 表 `workers` 的字段 `worker_availability`
-                supabaseClient.postgrest["workers"].update(
+                supabaseClient.postgrest["worker"].update(
                     mapOf("worker_availability" to isAvailable)
                 ) {
                     filter { eq("user_id", userId) }
@@ -295,8 +293,7 @@ class JobSeekerViewModel(
             try {
                 val userId = supabaseClient.auth.currentUserOrNull()?.id ?: return@launch
                 val daysString = currentDays.joinToString(", ")
-                // 更新 Supabase 表 `workers` 的字段 `worker_availableDays`
-                supabaseClient.postgrest["workers"].update(
+                supabaseClient.postgrest["worker"].update(
                     mapOf("worker_availableDays" to daysString)
                 ) {
                     filter { eq("user_id", userId) }
@@ -358,12 +355,11 @@ class JobSeekerViewModel(
                     filter { eq("id", userId) }
                 }
 
-                // 更新 Supabase `workers` 表的原生字段 `worker_name` 和 `worker_phoneNo`
                 val jobSeekerUpdateParams = buildMap {
                     put("worker_name", _uiState.value.userName.trim())
                     put("worker_phoneNo", fullPhoneToSave)
                 }
-                supabaseClient.postgrest["workers"].update(jobSeekerUpdateParams) {
+                supabaseClient.postgrest["worker"].update(jobSeekerUpdateParams) {
                     filter { eq("user_id", userId) }
                 }
 

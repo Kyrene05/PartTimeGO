@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,10 +15,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
@@ -36,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -59,14 +61,29 @@ import com.example.parttimego.ui.theme.PartTimeGOTheme
 import com.example.parttimego.ui.theme.SoftGrey
 import com.example.parttimego.viewmodel.EmployerProfileUiState
 import com.example.parttimego.viewmodel.EmployerProfileViewModel
+import com.example.parttimego.viewmodel.EmployerProfileViewModelFactory
 import com.example.parttimego.viewmodel.JobItemSummary
+import io.github.jan.supabase.SupabaseClient
 
 @Composable
 fun CompanyDetailRoute(
-    viewModel: EmployerProfileViewModel = viewModel(),
+    supabaseClient: SupabaseClient,
+    employerId: String,
     onBackClick: () -> Unit = {},
     onJobClick: (String) -> Unit = {}
 ) {
+    // 透過你原本的 Factory 建立 ViewModel，避開預設無參數建構的限制
+    val viewModel: EmployerProfileViewModel = viewModel(
+        factory = EmployerProfileViewModelFactory(supabaseClient)
+    )
+
+    // 當進入畫面或 employerId 改變時，自動載入該雇主的個人檔案與職缺
+    LaunchedEffect(employerId) {
+        if (employerId.isNotBlank()) {
+            viewModel.loadUserProfile(employerId)
+        }
+    }
+
     val uiState by viewModel.uiState.collectAsState()
 
     CompanyDetailScreen(
@@ -128,135 +145,131 @@ fun CompanyDetailScreen(
                     CircularProgressIndicator(color = DarkNavy)
                 }
             } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                // 使用 LazyColumn 提升長列表捲動效能
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    // 1. 公司资料卡片 (Company Card)
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(20.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                    // 1. 公司資料卡片 (Company Card)
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                         ) {
-                            // 1.1 公司名称
-                            Text(
-                                text = uiState.companyName.ifBlank { "Company Name" },
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = DarkNavy
-                            )
-
-                            // 1.2 公司简介 (Company Background)
-                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Column(
+                                modifier = Modifier.padding(20.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
                                 Text(
-                                    text = "About Company",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color.Gray
-                                )
-                                Text(
-                                    text = uiState.companyBackground.ifBlank { "No company description provided yet." },
-                                    fontSize = 14.sp,
-                                    color = Color(0xFF334155),
-                                    lineHeight = 20.sp
-                                )
-                            }
-
-                            HorizontalDivider(
-                                color = Color.LightGray.copy(alpha = 0.4f),
-                                thickness = 1.dp
-                            )
-
-                            // 1.3 负责人板块 (Person in Charge)
-                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text(
-                                    text = "Person in Charge:",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color.Gray
+                                    text = uiState.companyName.ifBlank { "Company Name" },
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = DarkNavy
                                 )
 
-                                // 头像 + 右侧名字
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(56.dp)
-                                            .clip(CircleShape)
-                                            .background(SoftGrey),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        if (!uiState.avatarUrl.isNullOrBlank()) {
-                                            AsyncImage(
-                                                model = uiState.avatarUrl,
-                                                contentDescription = "Employer Avatar",
-                                                modifier = Modifier.fillMaxSize(),
-                                                contentScale = ContentScale.Crop
-                                            )
-                                        } else {
-                                            Icon(
-                                                imageVector = Icons.Default.Person,
-                                                contentDescription = "Default Avatar",
-                                                tint = DarkNavy,
-                                                modifier = Modifier.size(30.dp)
-                                            )
-                                        }
-                                    }
-
-                                    Spacer(modifier = Modifier.width(14.dp))
-
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Text(
-                                        text = uiState.userName.ifBlank { "Manager Name" },
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = DarkNavy
+                                        text = "About Company",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.Gray
+                                    )
+                                    Text(
+                                        text = uiState.companyBackground.ifBlank { "No company description provided yet." },
+                                        fontSize = 14.sp,
+                                        color = Color(0xFF334155),
+                                        lineHeight = 20.sp
                                     )
                                 }
 
-                                Spacer(modifier = Modifier.height(2.dp))
+                                HorizontalDivider(
+                                    color = Color.LightGray.copy(alpha = 0.4f),
+                                    thickness = 1.dp
+                                )
 
-                                // 联系方式（电话 + 邮箱）
-                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    if (uiState.phone.isNotBlank()) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                imageVector = Icons.Default.Phone,
-                                                contentDescription = null,
-                                                tint = Color(0xFF64748B),
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text(
-                                                text = uiState.phone,
-                                                fontSize = 13.sp,
-                                                color = Color(0xFF334155)
-                                            )
+                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Text(
+                                        text = "Person in Charge:",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.Gray
+                                    )
+
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(56.dp)
+                                                .clip(CircleShape)
+                                                .background(SoftGrey),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            if (!uiState.avatarUrl.isNullOrBlank()) {
+                                                AsyncImage(
+                                                    model = uiState.avatarUrl,
+                                                    contentDescription = "Employer Avatar",
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                            } else {
+                                                Icon(
+                                                    imageVector = Icons.Default.Person,
+                                                    contentDescription = "Default Avatar",
+                                                    tint = DarkNavy,
+                                                    modifier = Modifier.size(30.dp)
+                                                )
+                                            }
                                         }
+
+                                        Spacer(modifier = Modifier.width(14.dp))
+
+                                        Text(
+                                            text = uiState.userName.ifBlank { "Manager Name" },
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = DarkNavy
+                                        )
                                     }
 
-                                    if (uiState.companyEmail.isNotBlank()) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                imageVector = Icons.Default.Email,
-                                                contentDescription = null,
-                                                tint = Color(0xFF64748B),
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text(
-                                                text = uiState.companyEmail,
-                                                fontSize = 13.sp,
-                                                color = Color(0xFF334155)
-                                            )
+                                    Spacer(modifier = Modifier.height(2.dp))
+
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        if (uiState.phone.isNotBlank()) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Phone,
+                                                    contentDescription = null,
+                                                    tint = Color(0xFF64748B),
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    text = uiState.phone,
+                                                    fontSize = 13.sp,
+                                                    color = Color(0xFF334155)
+                                                )
+                                            }
+                                        }
+
+                                        if (uiState.companyEmail.isNotBlank()) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Email,
+                                                    contentDescription = null,
+                                                    tint = Color(0xFF64748B),
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    text = uiState.companyEmail,
+                                                    fontSize = 13.sp,
+                                                    color = Color(0xFF334155)
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -264,8 +277,7 @@ fun CompanyDetailScreen(
                         }
                     }
 
-                    // 2. 正在招募岗位板块 (Active Job Postings)
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    item {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -284,29 +296,42 @@ fun CompanyDetailScreen(
                                 color = Color(0xFF2563EB)
                             )
                         }
+                    }
 
-                        if (uiState.isLoadingJobs) {
-                            CircularProgressIndicator(
-                                modifier = Modifier
-                                    .align(Alignment.CenterHorizontally)
-                                    .padding(vertical = 16.dp),
-                                color = DarkNavy
-                            )
-                        } else if (uiState.activeJobs.isEmpty()) {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9))
-                            ) {
-                                Text(
-                                    text = "No active job openings at the moment.",
-                                    fontSize = 13.sp,
-                                    color = Color.Gray,
-                                    modifier = Modifier.padding(16.dp)
-                                )
+                    when {
+                        uiState.isLoadingJobs -> {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(color = DarkNavy)
+                                }
                             }
-                        } else {
-                            uiState.activeJobs.forEach { job ->
+                        }
+                        uiState.activeJobs.isEmpty() -> {
+                            item {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9))
+                                ) {
+                                    Text(
+                                        text = "No active job openings at the moment.",
+                                        fontSize = 13.sp,
+                                        color = Color.Gray,
+                                        modifier = Modifier.padding(16.dp)
+                                    )
+                                }
+                            }
+                        }
+                        else -> {
+                            items(
+                                items = uiState.activeJobs,
+                                key = { it.id }
+                            ) { job ->
                                 ActiveJobItemCard(job = job, onClick = { onJobClick(job.id) })
                             }
                         }

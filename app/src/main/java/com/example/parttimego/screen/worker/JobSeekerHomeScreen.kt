@@ -86,6 +86,7 @@ fun JobSeekerHomeScreen(
     onViewTodayGigsClick: () -> Unit = onExploreClick,
     onAppliedClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
+    onCompanyClick: (String) -> Unit,
     jobViewModel: JobViewModel = viewModel()
 ) {
 
@@ -159,7 +160,8 @@ fun JobSeekerHomeScreen(
         onExploreClick = onExploreClick,
         onViewTodayGigsClick = onViewTodayGigsClick,
         onAppliedClick = onAppliedClick,
-        onProfileClick = onProfileClick
+        onProfileClick = onProfileClick,
+        onCompanyClick = onCompanyClick
     )
 }
 
@@ -173,7 +175,8 @@ fun JobSeekerHomeContent(
     onExploreClick: () -> Unit = {},
     onViewTodayGigsClick: () -> Unit = onExploreClick,
     onAppliedClick: () -> Unit = {},
-    onProfileClick: () -> Unit = {}
+    onProfileClick: () -> Unit = {},
+    onCompanyClick: (String) -> Unit = {}
 ) {
 
     var searchText by remember {
@@ -476,8 +479,7 @@ fun JobSeekerHomeContent(
 
                             JobSeekerJobCard(
                                 job = job,
-                                isApplied =
-                                    job.id in appliedJobIds,
+                                isApplied = job.id in appliedJobIds,
                                 onClick = {
                                     onGigClick(job.id)
                                 },
@@ -488,6 +490,9 @@ fun JobSeekerHomeContent(
                                     } else {
                                         showApplyDialog = true
                                     }
+                                },
+                                onCompanyClick = { employerId ->
+                                    onCompanyClick(employerId)
                                 }
                             )
                         }
@@ -1037,10 +1042,13 @@ private fun JobSeekerJobCard(
     job: JobEntity,
     isApplied: Boolean,
     onClick: () -> Unit,
-    onApplyClick: () -> Unit
+    onApplyClick: () -> Unit,
+    onCompanyClick: (String) -> Unit = {}
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color.Black),
         color = Color.White
@@ -1070,8 +1078,17 @@ private fun JobSeekerJobCard(
 
                     Text(
                         text = job.companyName ?: "Company",
-                        color = Color.DarkGray,
-                        fontSize = 13.sp
+                        color = Color.Gray,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        style = androidx.compose.ui.text.TextStyle(
+                            textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
+                        ),
+                        modifier = Modifier
+                            .clickable {
+                                onCompanyClick(job.employerId)
+                            }
+                            .padding(vertical = 2.dp)
                     )
                 }
 

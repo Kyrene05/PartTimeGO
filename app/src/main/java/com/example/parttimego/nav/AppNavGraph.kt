@@ -19,18 +19,21 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.parttimego.data.JobPost
 import com.example.parttimego.data.SupabaseClient
+import com.example.parttimego.data.SupabaseClient.client
 import com.example.parttimego.data.local.JobEntity
 import com.example.parttimego.data.model.JobSeeker
 import com.example.parttimego.data.repository.ApplicationRepository
 import com.example.parttimego.screen.ApplicantStatus
 import com.example.parttimego.screen.ApplicantUiModel
 import com.example.parttimego.screen.ChangePasswordRoute
+import com.example.parttimego.screen.CompanyDetailRoute
 import com.example.parttimego.screen.DashboardScreen
 import com.example.parttimego.screen.DetailsScreen
 import com.example.parttimego.screen.EditEmployerProfileRoute
 import com.example.parttimego.screen.EditJobSeekerProfileRoute
 import com.example.parttimego.screen.EmployerProfileRoute
 import com.example.parttimego.screen.ForgotPasswordScreen
+import com.example.parttimego.screen.JobSeekerDetailScreen
 import com.example.parttimego.screen.JobSeekerSettingRoute
 import com.example.parttimego.screen.JobStatusFilter
 import com.example.parttimego.screen.LoginScreen
@@ -80,6 +83,12 @@ sealed class Screen(val route: String) {
     object UpdatePassword : Screen("update_password")
     object Dashboard : Screen("dashboard")
     object PostJob : Screen("post_job")
+    object JobSeekerDetail : Screen("jobseeker_detail/{jobSeekerId}") {
+        fun createRoute(jobSeekerId: String) = "jobseeker_detail/$jobSeekerId"
+    }
+    object CompanyDetail : Screen("company_detail/{employerId}") {
+        fun createRoute(employerId: String) = "company_detail/$employerId"
+    }
     object JobSeekerHome : Screen("job_seeker_home")
     object JobSeekerGigListing : Screen("job_seeker_gig_listing")
     object JobSeekerGigDetail : Screen("job_seeker_gig_details/{jobId}") {
@@ -115,10 +124,12 @@ private fun JobEntity.toStatusFilter(): JobStatusFilter {
         else -> JobStatusFilter.ACTIVE
     }
 }
+
 @Serializable
 private data class CompanyNameDto(
     @SerialName("company_name") val companyName: String? = null
 )
+
 @Composable
 fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel = viewModel()) {
 
@@ -322,7 +333,7 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             }
 
             DashboardScreen(
-                activeJobsCount = jobs.size,  // total, not filtered
+                activeJobsCount = jobs.size,
                 totalApplicantsCount = totalApplicantsCount,
                 thisWeekHires = thisWeekHiresCount,
                 pendingReviewCount = pendingReviewCount,
@@ -334,11 +345,7 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                 selectedStatus = selectedStatus,
                 onStatusSelected = { selectedStatus = it },
                 onJobDetailsClick = { jobId ->
-                    navController.navigate(
-                        Screen.Details.createRoute(
-                            jobId
-                        )
-                    )
+                    navController.navigate(Screen.Details.createRoute(jobId))
                 },
                 onTotalApplicantsClick = { navController.navigate(Screen.ManageApplicants.route) },
                 onDashboardTabClick = { },
@@ -498,6 +505,9 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             ManageApplicantsScreen(
                 applicants = applicants,
                 onBackClick = { navController.popBackStack() },
+                onViewProfileClick = { applicantId ->
+                    navController.navigate(Screen.JobSeekerDetail.createRoute(applicantId))
+                },
                 onAcceptClick = { applicationId, note ->
                     coroutineScope.launch {
                         applicationRepository.updateApplicationStatus(
@@ -527,6 +537,31 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                 onProfileTabClick = { navController.navigate(Screen.EmployerProfile.route) }
             )
         }
+        composable(
+            route = Screen.JobSeekerDetail.route,
+            arguments = listOf(navArgument("jobSeekerId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val jobSeekerId = backStackEntry.arguments?.getString("jobSeekerId") ?: ""
+
+            val viewModel: JobSeekerViewModel = viewModel(
+                factory = JobSeekerViewModelFactory(supabaseClient = SupabaseClient.client)
+            )
+
+            LaunchedEffect(jobSeekerId) {
+                if (jobSeekerId.isNotBlank()) {
+                    viewModel.loadJobSeekerByJobSeekerId(jobSeekerId)
+                }
+            }
+
+            val uiState by viewModel.uiState.collectAsState()
+
+            JobSeekerDetailScreen(
+                uiState = uiState,
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
 
         // Employer Profile Screen
         composable(Screen.EmployerProfile.route) {
@@ -534,7 +569,6 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                 factory = EmployerProfileViewModelFactory(SupabaseClient.client)
             )
             val coroutineScope = rememberCoroutineScope()
-            // Re-sync with database every time returning to this screen
             LaunchedEffect(Unit) {
                 profileViewModel.loadUserProfile()
             }
@@ -578,7 +612,6 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
 
         // Edit Employer Profile Screen
         composable(Screen.EditEmployerProfile.route) {
-            // Distinct ViewModel instance to isolate edits until saved
             val editViewModel: EmployerProfileViewModel = viewModel(
                 factory = EmployerProfileViewModelFactory(SupabaseClient.client)
             )
@@ -633,7 +666,7 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             )
         }
 
-        //Job Seeker home
+        // Job Seeker Home
         composable(Screen.JobSeekerHome.route) {
             JobSeekerHomeScreen(
                 onGigClick = { jobId ->
@@ -655,6 +688,27 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                     ) {
                         launchSingleTop = true
                     }
+                },
+                onCompanyClick = { employerId ->
+                    navController.navigate(
+                        Screen.CompanyDetail.createRoute(employerId)
+                    )
+                }
+            )
+        }
+
+        // Company Detail
+        composable(route = "company_detail/{employerId}") { backStackEntry ->
+
+            val employerId = backStackEntry.arguments?.getString("employerId").orEmpty()
+
+
+            CompanyDetailRoute(
+                supabaseClient = client,
+                employerId = employerId,
+                onBackClick = { navController.popBackStack() },
+                onJobClick = { jobId ->
+                    navController.navigate("your_job_detail_route/$jobId")
                 }
             )
         }
@@ -722,6 +776,12 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                 onAppliedClick = {
                     navController.navigate(Screen.JobSeekerApplied.route)
                 },
+                onCompanyClick = { employerId ->
+                    navController.navigate(
+                        Screen.CompanyDetail.createRoute(employerId)
+                    )
+                },
+
                 onProfileClick = {
                     navController.navigate(
                         Screen.JobSeekerProfile.route
@@ -857,19 +917,16 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
 
             JobSeekerProfileScreen(
                 worker = worker,
-
                 onSettingClick = {
                     navController.navigate(
                         Screen.JobSeekerSetting.route
                     )
                 },
-
                 onAvailabilityChange = { available ->
                     worker = worker.copy(
                         jobSeekerAvailability = available
                     )
                 },
-
                 onHomeClick = {
                     navController.navigate(
                         Screen.JobSeekerHome.route
@@ -882,7 +939,6 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                         launchSingleTop = true
                     }
                 },
-
                 onExploreClick = {
                     navController.navigate(
                         Screen.JobSeekerGigListing.route
@@ -890,7 +946,6 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                         launchSingleTop = true
                     }
                 },
-
                 onAppliedClick = {
                     navController.navigate(
                         Screen.JobSeekerApplied.route
@@ -900,24 +955,26 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                 }
             )
         }
-        //setting screen
+
+        // Setting Screen
         composable(route = Screen.JobSeekerSetting.route) {
             val viewModel: JobSeekerViewModel = viewModel(
                 factory = JobSeekerViewModelFactory(
                     supabaseClient = SupabaseClient.client
                 )
             )
+
+            LaunchedEffect(Unit) {
+                viewModel.loadUserProfile()
+            }
+
             JobSeekerSettingRoute(
                 viewModel = viewModel,
-                onBackClick = {
-                    navController.popBackStack()
-                },
-                onEditProfileClick = {
-                    navController.navigate(Screen.EditJobSeekerProfile.route)
-                },
-                onChangePasswordClick = {},
-                onTermsClick = {},
-                onMoreOptionsClick = {},
+                onBackClick = { navController.popBackStack() },
+                onEditProfileClick = { navController.navigate(Screen.EditJobSeekerProfile.route) },
+                onChangePasswordClick = { navController.navigate(Screen.ChangePassword.route)},
+                onTermsClick = { navController.navigate(Screen.TermsAndConditions.route)},
+                onMoreOptionsClick = { navController.navigate(Screen.MoreOptions.route)},
                 onLogoutNavigateToLogin = {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(0) { inclusive = true }
@@ -926,21 +983,19 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             )
         }
 
-        //edit profile screen
+        // Edit Profile Screen
         composable(route = Screen.EditJobSeekerProfile.route) {
             val viewModel: JobSeekerViewModel = viewModel(
                 factory = JobSeekerViewModelFactory(
                     supabaseClient = SupabaseClient.client
                 )
             )
+
             EditJobSeekerProfileRoute(
                 viewModel = viewModel,
-                onBackClick = {
-                    navController.popBackStack()
-                }
+                onBackClick = { navController.popBackStack() }
             )
         }
-
     }
 }
 

@@ -33,7 +33,6 @@ import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -45,7 +44,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,11 +57,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.parttimego.ui.theme.DarkNavy
@@ -111,9 +113,18 @@ fun JobSeekerSettingRoute(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
 
-    LaunchedEffect(Unit) {
-        viewModel.loadUserProfile()
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.loadUserProfile()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     JobSeekerSettingScreen(
@@ -207,125 +218,113 @@ fun JobSeekerSettingScreen(
                 .padding(paddingValues)
                 .background(DarkNavy)
         ) {
-            // Header Profile Section
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 36.dp)
+                    .padding(horizontal = 20.dp, vertical = 20.dp)
             ) {
-                if (uiState.isLoading) {
+                // 已移除原本的 uiState.isLoading 判斷與 CircularProgressIndicator，直接顯示資訊區塊
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Avatar
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(84.dp),
-                        contentAlignment = Alignment.Center
+                            .size(84.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.2f))
+                            .padding(3.dp)
                     ) {
-                        CircularProgressIndicator(color = Color.White)
-                    }
-                } else {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        // Avatar
                         Box(
                             modifier = Modifier
-                                .size(84.dp)
+                                .fillMaxSize()
                                 .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.2f))
-                                .padding(3.dp)
+                                .background(SoftGrey),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape)
-                                    .background(SoftGrey),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (!uiState.avatarUrl.isNullOrBlank()) {
-                                    AsyncImage(
-                                        model = uiState.avatarUrl,
-                                        contentDescription = "User Avatar",
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Default.Person,
-                                        contentDescription = "Default Avatar",
-                                        tint = DarkNavy,
-                                        modifier = Modifier.size(42.dp)
-                                    )
-                                }
+                            if (!uiState.avatarUrl.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = uiState.avatarUrl,
+                                    contentDescription = "User Avatar",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Default Avatar",
+                                    tint = DarkNavy,
+                                    modifier = Modifier.size(42.dp)
+                                )
                             }
                         }
+                    }
 
-                        Spacer(modifier = Modifier.width(18.dp))
+                    Spacer(modifier = Modifier.width(18.dp))
 
-                        // Name, Phone & Email Area
-                        Column(modifier = Modifier.weight(1f)) {
+                    // Name, Phone & Email Area
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = displayName,
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // Phone Row
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable(enabled = uiState.phone.isBlank()) { onEditProfileClick() }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Phone,
+                                contentDescription = null,
+                                tint = if (uiState.phone.isNotBlank()) Color.White.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f),
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = displayName,
-                                color = Color.White,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
+                                text = if (uiState.phone.isNotBlank()) uiState.phone else "+ Add Phone",
+                                color = if (uiState.phone.isNotBlank()) Color.White.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.6f),
+                                fontSize = 13.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
+                        }
 
-                            Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
-                            // Phone Row
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.clickable(enabled = uiState.phone.isBlank()) { onEditProfileClick() }
-                            ) {
+                        // Email Row
+                        if (uiState.email.isNotBlank()) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    imageVector = Icons.Default.Phone,
+                                    imageVector = Icons.Default.Email,
                                     contentDescription = null,
-                                    tint = if (uiState.phone.isNotBlank()) Color.White.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f),
+                                    tint = Color.White.copy(alpha = 0.7f),
                                     modifier = Modifier.size(13.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = if (uiState.phone.isNotBlank()) uiState.phone else "+ Add Phone",
-                                    color = if (uiState.phone.isNotBlank()) Color.White.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.6f),
-                                    fontSize = 13.sp,
+                                    text = uiState.email,
+                                    color = Color.White.copy(alpha = 0.8f),
+                                    fontSize = 12.sp,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                            }
-
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            // Email Row
-                            if (uiState.email.isNotBlank()) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.Email,
-                                        contentDescription = null,
-                                        tint = Color.White.copy(alpha = 0.7f),
-                                        modifier = Modifier.size(13.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = uiState.email,
-                                        color = Color.White.copy(alpha = 0.8f),
-                                        fontSize = 12.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
                             }
                         }
                     }
                 }
             }
 
-            // Options List Surface
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                shape = RoundedCornerShape(topStart = 34.dp, topEnd = 34.dp),
                 color = Color.White
             ) {
                 Column(

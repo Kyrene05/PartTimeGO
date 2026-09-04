@@ -17,16 +17,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonPrimitive
-
-@Serializable
-data class EmployerProfileDto(
-    @SerialName("full_name") val userName: String? = null,
-    @SerialName("company_name") val companyName: String? = null,
-    @SerialName("phone") val phone: String? = null,
-    @SerialName("company_background") val companyBackground: String? = null,
-    @SerialName("avatar_url") val avatarUrl: String? = null
-)
 
 @Serializable
 data class JobSummaryDto(
@@ -76,32 +68,56 @@ class EmployerProfileViewModel(
 
     fun loadUserProfile(targetEmployerId: String? = null) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
                 val currentUser = supabaseClient.auth.currentUserOrNull()
                 val userId = targetEmployerId ?: currentUser?.id ?: return@launch
+                val responseList = supabaseClient.postgrest["profiles"]
+                    .select { filter { eq("id", userId) } }
+                    .decodeList<Map<String, JsonElement>>()
 
-                val email = if (targetEmployerId == null || targetEmployerId == currentUser?.id) {
-                    currentUser?.email.orEmpty()
-                } else ""
+                val profileMap = responseList.firstOrNull()
+
+                val dbCompanyName = profileMap?.get("company_name")?.jsonPrimitive?.content.orEmpty()
+                val dbPhone = profileMap?.get("phone")?.jsonPrimitive?.content.orEmpty()
+                val dbBackground = profileMap?.get("company_background")?.jsonPrimitive?.content.orEmpty()
+                val dbAvatarUrl = profileMap?.get("avatar_url")?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+                val dbUserName = profileMap?.get("full_name")?.jsonPrimitive?.content.orEmpty()
+
+
+                val profileEmail = profileMap?.get("email")?.jsonPrimitive?.content?.takeIf { it.isNotBlank() && it != "null" }
+                android.util.Log.d("DEBUG_EMAIL", "profileEmail: $profileEmail")
+
+                val finalEmail = if (!profileEmail.isNullOrBlank()) {
+                    profileEmail
+                } else {
+                    try {
+                        val rpcResult = supabaseClient.postgrest.rpc(
+                            "get_employer_email",
+                            mapOf("target_user_id" to userId)
+                        ).decodeAs<String>()
+
+                        android.util.Log.d("DEBUG_EMAIL", "RPC Result: $rpcResult")
+                        rpcResult
+                    } catch (e: Exception) {
+                        android.util.Log.e("DEBUG_EMAIL", "RPC Error: ${e.localizedMessage}")
+                        ""
+                    }
+                }
 
                 val authMetaData = currentUser?.userMetadata
                 val registeredName = authMetaData?.get("full_name")?.jsonPrimitive?.content
                     ?: authMetaData?.get("user_name")?.jsonPrimitive?.content
                     ?: authMetaData?.get("name")?.jsonPrimitive?.content
 
-                val profile = supabaseClient.postgrest["profiles"]
-                    .select { filter { eq("id", userId) } }
-                    .decodeSingleOrNull<EmployerProfileDto>()
-
                 val finalUserName = when {
-                    !profile?.userName.isNullOrBlank() -> profile.userName
+                    dbUserName.isNotBlank() -> dbUserName
                     !registeredName.isNullOrBlank() -> registeredName
-                    email.isNotBlank() -> email.substringBefore("@")
+                    finalEmail.isNotBlank() -> finalEmail.substringBefore("@")
                     else -> ""
                 }
 
-                val rawPhone = profile?.phone.orEmpty().trim()
+                val rawPhone = dbPhone.trim()
                 val formattedPhone = when {
                     rawPhone.isBlank() -> ""
                     rawPhone.startsWith("+60") -> rawPhone
@@ -112,11 +128,11 @@ class EmployerProfileViewModel(
                 _uiState.update {
                     it.copy(
                         userName = finalUserName,
-                        companyName = profile?.companyName.orEmpty(),
+                        companyName = dbCompanyName,
                         phone = formattedPhone,
-                        companyBackground = profile?.companyBackground.orEmpty(),
-                        companyEmail = email,
-                        avatarUrl = profile?.avatarUrl,
+                        companyBackground = dbBackground,
+                        companyEmail = finalEmail,
+                        avatarUrl = dbAvatarUrl,
                         isLoading = false
                     )
                 }
@@ -127,7 +143,7 @@ class EmployerProfileViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Failed to load profile: ${e.message}"
+                        errorMessage = "Failed to load profile: ${e.localizedMessage}"
                     )
                 }
             }
@@ -144,7 +160,7 @@ class EmployerProfileViewModel(
                     .select {
                         filter {
                             eq("employer_id", userId)
-                            eq("status", "open") // 只过滤正在招聘中的职位
+                            eq("status", "open")
                         }
                     }
                     .decodeList<JobSummaryDto>()
@@ -192,30 +208,24 @@ class EmployerProfileViewModel(
                 .filter { it.isDigit() }
 
             if (companyName.isBlank()) {
-                _uiState.update {
-                    it.copy(errorMessage = "Company name is required.")
-                }
+                _uiState.update { it.copy(errorMessage = "Company name is required.") }
                 return@launch
             }
 
             if (rawDigits.isBlank()) {
-                _uiState.update {
-                    it.copy(errorMessage = "Phone number is required.")
-                }
+                _uiState.update { it.copy(errorMessage = "Phone number is required.") }
                 return@launch
             }
 
             if (rawDigits.length < 8) {
-                _uiState.update {
-                    it.copy(errorMessage = "Invalid phone number (must be at least 8 digits)")
-                }
+                _uiState.update { it.copy(errorMessage = "Invalid phone number (must be at least 8 digits)") }
                 return@launch
             }
 
-            _uiState.update { it.copy(isSaving = true) }
+            _uiState.update { it.copy(isSaving = true, errorMessage = null) }
             try {
-                val userId = supabaseClient.auth.currentUserOrNull()?.id
-                    ?: throw Exception("User not authenticated.")
+                val currentUser = supabaseClient.auth.currentUserOrNull()
+                val userId = currentUser?.id ?: throw Exception("User not authenticated.")
 
                 var uploadedAvatarUrl = _uiState.value.avatarUrl
 
@@ -236,12 +246,17 @@ class EmployerProfileViewModel(
                 }
 
                 val fullPhoneToSave = "+60$rawDigits"
+                val userEmail = currentUser.email.orEmpty()
 
+                // 將 email 一起放進更新參數中寫入資料庫
                 val updateParams = buildMap {
                     put("full_name", _uiState.value.userName.trim())
                     put("company_name", companyName)
                     put("phone", fullPhoneToSave)
                     put("company_background", _uiState.value.companyBackground.trim())
+                    if (userEmail.isNotBlank()) {
+                        put("email", userEmail)
+                    }
                     uploadedAvatarUrl?.let { put("avatar_url", it) }
                 }
 
@@ -254,6 +269,7 @@ class EmployerProfileViewModel(
                         isSaving = false,
                         updateSuccess = true,
                         phone = fullPhoneToSave,
+                        companyEmail = userEmail,
                         avatarUrl = uploadedAvatarUrl,
                         selectedImageUri = null
                     )

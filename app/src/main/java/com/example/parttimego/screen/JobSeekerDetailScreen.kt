@@ -37,11 +37,12 @@ data class GigExperienceItem(
 @Composable
 fun JobSeekerDetailScreen(
     uiState: JobSeekerUiState,
-    completedGigsCount: Int = uiState.completedGigsCount,        // 默认直接绑定 uiState
-    ratingScore: Double = 5.0,                                     // 评分
-    gigExperiences: List<GigExperienceItem> = uiState.gigExperiences, // 默认直接绑定 uiState
+    ratingScore: Double = 5.0, // 默认评分
     onBackClick: () -> Unit = {}
 ) {
+    val completedGigsCount = uiState.completedGigsCount
+    val gigExperiences = uiState.gigExperiences
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -157,7 +158,7 @@ fun JobSeekerDetailScreen(
                                 fontSize = 13.sp
                             )
                         }
-                        // 动态显示总完成的 Gigs 数量
+
                         Text(
                             text = "Rate: $ratingScore  •  $completedGigsCount ${if (completedGigsCount == 1) "gig" else "gigs"}",
                             color = Color.White.copy(alpha = 0.8f),
@@ -166,7 +167,7 @@ fun JobSeekerDetailScreen(
                     }
                 }
 
-                // 内容白底卡片
+                // 内容白底卡片区域
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
@@ -271,21 +272,6 @@ fun JobSeekerDetailScreen(
                             }
                         }
 
-                        // Preferred Job Categories
-                        SectionTitle(title = "Preferred Job Categories")
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            if (uiState.preferredCategories.isEmpty()) {
-                                Text(text = "No categories added", fontSize = 13.sp, color = Color.Gray)
-                            } else {
-                                uiState.preferredCategories.forEach { cat ->
-                                    ChipItem(text = cat, backgroundColor = Color(0xFFDCFCE7), textColor = Color(0xFF166534))
-                                }
-                            }
-                        }
-
                         // Preferred Locations
                         SectionTitle(title = "Preferred Locations")
                         FlowRow(
@@ -301,7 +287,7 @@ fun JobSeekerDetailScreen(
                             }
                         }
 
-                        // Gigs Experience (在 ViewModel 中已限制最多获取 10 条)
+                        // Gigs Experience
                         SectionTitle(title = "Gigs Experience")
 
                         if (gigExperiences.isEmpty()) {
@@ -400,7 +386,6 @@ fun JobSeekerDetailScreenPreview() {
                 availability = false,
                 availableDays = listOf("Sat", "Sun"),
                 skills = listOf("Kotlin", "Jetpack Compose"),
-                preferredCategories = listOf("Event Crew", "Retail"),
                 preferredLocations = listOf("Penang", "Kuala Lumpur"),
                 completedGigsCount = 12,
                 gigExperiences = listOf(

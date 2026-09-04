@@ -1,6 +1,7 @@
 package com.example.parttimego.screen.worker
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -72,6 +73,7 @@ fun JobSeekerGigDetailScreen(
     onBackClick: () -> Unit = {},
     onHomeClick: () -> Unit = {},
     onExploreClick: () -> Unit = {},
+    onCompanyClick: (String) -> Unit = {},
     onAppliedClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     jobViewModel: JobViewModel = viewModel()
@@ -308,11 +310,18 @@ fun JobSeekerGigDetailScreen(
                             )
 
                             Text(
-                                text =
-                                    currentJob.companyName
-                                        ?: "Company",
-                                fontSize = 15.sp,
-                                color = GreyText
+                                text = job.companyName ?: "Company",
+                                color = Color.Gray,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                style = androidx.compose.ui.text.TextStyle(
+                                    textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
+                                ),
+                                modifier = Modifier
+                                    .clickable {
+                                        onCompanyClick(job.employerId)
+                                    }
+                                    .padding(vertical = 2.dp)
                             )
                         }
 
