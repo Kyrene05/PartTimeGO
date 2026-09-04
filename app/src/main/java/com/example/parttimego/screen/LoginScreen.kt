@@ -53,7 +53,11 @@ import com.example.parttimego.ui.theme.DarkNavy
 import com.example.parttimego.ui.theme.MutedText
 import com.example.parttimego.ui.theme.SoftGrey
 import com.example.parttimego.viewmodel.AuthState
-
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.text.input.VisualTransformation
 @Composable
 fun LoginScreen(
     authState: AuthState = AuthState.Idle,
@@ -66,7 +70,7 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var isLoginTab by remember { mutableStateOf(true) }
     var showRoleDialog by remember { mutableStateOf(false) }
-
+    var passwordVisible by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
     val context = LocalContext.current
 
@@ -248,7 +252,17 @@ fun LoginScreen(
                                     modifier = Modifier.size(20.dp)
                                 )
                             },
-                            visualTransformation = PasswordVisualTransformation(),
+                            trailingIcon = {
+                                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                    Icon(
+                                        imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                                        tint = MutedText,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            },
+                            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp),
                             colors = OutlinedTextFieldDefaults.colors(

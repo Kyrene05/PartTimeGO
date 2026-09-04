@@ -1,6 +1,5 @@
 package com.example.parttimego.screen
 
-import android.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,9 +15,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -32,13 +36,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.parttimego.nav.Screen
 import com.example.parttimego.ui.theme.DarkNavy
 import com.example.parttimego.ui.theme.PartTimeGOTheme
 import com.example.parttimego.ui.theme.SoftGrey
@@ -47,61 +50,66 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun UpdatePasswordScreen(
-    authState:AuthState= AuthState.Idle,
-    sessionReady:Boolean=true,
-    onUpdatePasswordClick:(String) -> Unit={},
-    onRequestNewLinkClick:() -> Unit={}
-){
-    var newPassword by remember{ mutableStateOf("") }
+    authState: AuthState = AuthState.Idle,
+    sessionReady: Boolean = true,
+    onUpdatePasswordClick: (String) -> Unit = {},
+    onRequestNewLinkClick: () -> Unit = {}
+) {
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var newPasswordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
+    var validationError by remember { mutableStateOf<String?>(null) }
     var linkExpired by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
-    //Fail safe: if no session arrives within 10s, assume the link failed/expired
+    // Fail safe: if no session arrives within 10s, assume the link failed/expired
     LaunchedEffect(sessionReady) {
-        if (!sessionReady){
+        if (!sessionReady) {
             delay(10_000)
-            if (!sessionReady)linkExpired=true
+            if (!sessionReady) linkExpired = true
         }
     }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(DarkNavy)
             .statusBarsPadding()
             .navigationBarsPadding()
-
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth()
-            .padding(24.dp)
-            .verticalScroll(scrollState)
-            ) {
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp)
+                .verticalScroll(scrollState)
+        ) {
             Text(
                 "Set New Password",
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
-                color=Color.White
+                color = Color.White
             )
             Spacer(Modifier.height(4.dp))
             Text(
                 "Enter your new password below",
                 fontSize = 14.sp,
-                color=Color.White.copy(alpha = 0.8f)
-                )
+                color = Color.White.copy(alpha = 0.8f)
+            )
         }
         Surface(
             modifier = Modifier.fillMaxSize(),
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-            color=Color.White
+            color = Color.White
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
 
-                when{
-                    //Fallback state: link expired/session never arrived
+                when {
+                    // Fallback state: link expired/session never arrived
                     linkExpired -> {
                         Text(
                             "This reset link has expired or is invalid.",
-                            color= Color.Red,
+                            color = Color.Red,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -115,8 +123,9 @@ fun UpdatePasswordScreen(
                             Text("Request a New Link", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         }
                     }
-                    //waiting state: still resolving the session
-                    !sessionReady ->{
+
+                    // Waiting state: still resolving the session
+                    !sessionReady -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             CircularProgressIndicator(color = DarkNavy, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(12.dp))
@@ -124,48 +133,116 @@ fun UpdatePasswordScreen(
                         }
                     }
 
-                    //Normal state: form ready
-                    else ->{
+                    // Normal state: form ready
+                    else -> {
+                        // New Password field
+                        Text(
+                            "New Password",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = DarkNavy
+                        )
+                        Spacer(Modifier.height(6.dp))
                         OutlinedTextField(
                             value = newPassword,
-                            onValueChange = {newPassword=it},
-                            visualTransformation = PasswordVisualTransformation(),
+                            onValueChange = { newPassword = it; validationError = null },
+                            trailingIcon = {
+                                IconButton(onClick = { newPasswordVisible = !newPasswordVisible }) {
+                                    Icon(
+                                        imageVector = if (newPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                        contentDescription = if (newPasswordVisible) "Hide password" else "Show password",
+                                        tint = DarkNavy
+                                    )
+                                }
+                            },
+                            visualTransformation = if (newPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp),
-                            colors= OutlinedTextFieldDefaults.colors(
+                            colors = OutlinedTextFieldDefaults.colors(
                                 unfocusedBorderColor = SoftGrey,
                                 focusedBorderColor = DarkNavy
                             ),
                             modifier = Modifier.fillMaxWidth()
                         )
+
+                        Spacer(Modifier.height(16.dp))
+
+                        // Confirm Password field
+                        Text(
+                            "Re-enter New Password",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = DarkNavy
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = confirmPassword,
+                            onValueChange = { confirmPassword = it; validationError = null },
+                            trailingIcon = {
+                                IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                                    Icon(
+                                        imageVector = if (confirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                        contentDescription = if (confirmPasswordVisible) "Hide password" else "Show password",
+                                        tint = DarkNavy
+                                    )
+                                }
+                            },
+                            visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedBorderColor = SoftGrey,
+                                focusedBorderColor = DarkNavy
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
                         Spacer(Modifier.height(20.dp))
 
-                        if (authState is AuthState.Error){
-                            Text(authState.message, color=Color.Red, fontSize = 12.sp)
+                        if (validationError != null) {
+                            Text(validationError!!, color = Color.Red, fontSize = 12.sp)
                             Spacer(Modifier.height(12.dp))
                         }
-                        if (authState is AuthState.Success){
-                            Text(authState.message,
+
+                        if (authState is AuthState.Error) {
+                            Text(authState.message, color = Color.Red, fontSize = 12.sp)
+                            Spacer(Modifier.height(12.dp))
+                        }
+                        if (authState is AuthState.Success) {
+                            Text(
+                                authState.message,
                                 color = Color(0xFF2E7D32),
                                 fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold)
+                                fontWeight = FontWeight.SemiBold
+                            )
                             Spacer(Modifier.height(12.dp))
                         }
+
                         Button(
-                            onClick = {onUpdatePasswordClick(newPassword)},
+                            onClick = {
+                                if (newPassword.isBlank() || confirmPassword.isBlank()) {
+                                    validationError = "Please fill in both fields."
+                                    return@Button
+                                }
+                                if (newPassword != confirmPassword) {
+                                    validationError = "Passwords do not match."
+                                    return@Button
+                                }
+                                validationError = null
+                                onUpdatePasswordClick(newPassword)
+                            },
                             enabled = authState !is AuthState.Loading,
                             modifier = Modifier.fillMaxWidth().height(50.dp),
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = DarkNavy)
                         ) {
-                            if (authState is AuthState.Loading){
+                            if (authState is AuthState.Loading) {
                                 CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                            }else{
+                            } else {
                                 Text("Update Password", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
-
                 }
             }
         }
