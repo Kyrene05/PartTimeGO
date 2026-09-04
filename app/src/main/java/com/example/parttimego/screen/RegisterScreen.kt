@@ -1,5 +1,6 @@
 package com.example.parttimego.screen
 
+import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -55,6 +56,44 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.text.input.VisualTransformation
+
+// Only fullName and email are persisted as a draft — never the password or confirm
+// password. Storing a password in SharedPreferences means storing it in plaintext
+// on the device, which is a security risk (readable if the device is rooted/
+// compromised or lost). Losing half-typed passwords on accidental back-navigation
+// is a much smaller cost than that risk, so those two fields intentionally reset
+// every time.
+private object RegisterDraftPrefs {
+    private const val PREFS_NAME = "register_draft"
+    private const val KEY_FULL_NAME = "fullName"
+    private const val KEY_EMAIL = "email"
+
+    fun save(context: Context, fullName: String, email: String) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_FULL_NAME, fullName)
+            .putString(KEY_EMAIL, email)
+            .apply()
+    }
+
+    fun loadFullName(context: Context): String {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_FULL_NAME, "") ?: ""
+    }
+
+    fun loadEmail(context: Context): String {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_EMAIL, "") ?: ""
+    }
+
+    fun clear(context: Context) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .apply()
+    }
+}
+
 @Composable
 fun RegisterScreen(
     authState: AuthState = AuthState.Idle,
@@ -62,8 +101,10 @@ fun RegisterScreen(
     onRegisterClick: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     onLoginClick: () -> Unit = {}
 ) {
-    var fullName by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
+    val context = LocalContext.current
+
+    var fullName by remember { mutableStateOf(RegisterDraftPrefs.loadFullName(context)) }
+    var email by remember { mutableStateOf(RegisterDraftPrefs.loadEmail(context)) }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var isLoginTab by remember { mutableStateOf(false) }
@@ -71,11 +112,18 @@ fun RegisterScreen(
     var confirmPasswordVisible by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
-    val context = LocalContext.current
+
+    // Save the fullName/email draft as they change so they survive accidental
+    // back-navigation — passwords are deliberately excluded, see the comment above.
+    LaunchedEffect(fullName, email) {
+        RegisterDraftPrefs.save(context, fullName, email)
+    }
 
     LaunchedEffect(authState) {
         if (authState is AuthState.Success) {
             Toast.makeText(context, authState.message, Toast.LENGTH_LONG).show()
+            // Clear the draft once registration actually succeeds.
+            RegisterDraftPrefs.clear(context)
         }
     }
 
@@ -275,7 +323,7 @@ fun RegisterScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Password Field
+                    // Password Field — intentionally NOT persisted, see RegisterDraftPrefs comment.
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             text = "Password",
@@ -319,7 +367,7 @@ fun RegisterScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Confirm Password Field
+                    // Confirm Password Field — intentionally NOT persisted, see RegisterDraftPrefs comment.
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             text = "Confirm Password",
@@ -340,7 +388,17 @@ fun RegisterScreen(
                                     modifier = Modifier.size(20.dp)
                                 )
                             },
-                            visualTransformation = PasswordVisualTransformation(),
+                            trailingIcon = {
+                                IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                                    Icon(
+                                        imageVector = if (confirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                        contentDescription = if (confirmPasswordVisible) "Hide password" else "Show password",
+                                        tint = MutedText,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            },
+                            visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp),
                             colors = OutlinedTextFieldDefaults.colors(
