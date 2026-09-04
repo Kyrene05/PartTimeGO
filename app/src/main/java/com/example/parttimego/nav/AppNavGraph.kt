@@ -704,17 +704,15 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
         }
 
         // Company Detail
-        composable(route = "company_detail/{employerId}") { backStackEntry ->
-
-            val employerId = backStackEntry.arguments?.getString("employerId").orEmpty()
-
+        composable("company_detail/{employerId}") { backStackEntry ->
+            val employerId = backStackEntry.arguments?.getString("employerId") ?: ""
 
             CompanyDetailRoute(
                 supabaseClient = client,
                 employerId = employerId,
                 onBackClick = { navController.popBackStack() },
                 onJobClick = { jobId ->
-                    navController.navigate("your_job_detail_route/$jobId")
+                    navController.navigate("job_seeker_gig_details/$jobId")
                 }
             )
         }
@@ -828,16 +826,13 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
         }
 
         composable(Screen.JobSeekerProfile.route) {
-            // Activity-scoped: the Profile state survives when the Profile
-            // destination is left and recreated by navigation.
             val viewModel: JobSeekerViewModel = viewModel(
-                viewModelStoreOwner = LocalContext.current as ComponentActivity,
-                factory = JobSeekerViewModelFactory(supabaseClient = SupabaseClient.client)
+                factory = JobSeekerViewModelFactory(supabaseClient = client)
             )
             val uiState by viewModel.uiState.collectAsState<JobSeekerUiState>()
 
-            val currentUserId = SupabaseClient.client.auth.currentUserOrNull()?.id.orEmpty()
-            val worker = remember(uiState, currentUserId) {
+            val currentUserId = client.auth.currentUserOrNull()?.id.orEmpty()
+            val worker = remember(key1 = uiState, key2 = currentUserId) {
                 JobSeeker(
                     jobSeekerId = currentUserId,
                     userId = currentUserId,

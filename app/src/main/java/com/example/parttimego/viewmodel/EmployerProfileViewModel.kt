@@ -25,7 +25,7 @@ data class JobSummaryDto(
     @SerialName("id") val id: String,
     @SerialName("title") val title: String,
     @SerialName("category") val category: String? = null,
-    @SerialName("salary") val salary: String? = null,
+    @SerialName("salary") val salary: Double? = null, // 修正：配合資料庫的數字型態改為 Double?
     @SerialName("status") val status: String? = "open"
 )
 
@@ -66,12 +66,16 @@ class EmployerProfileViewModel(
         loadUserProfile()
     }
 
+    // ----------------------------------------------------
+    // 1. 讀取個人檔案與公司資訊 (對應 Supabase 的 "profiles" 資料表)
+    // ----------------------------------------------------
     fun loadUserProfile(targetEmployerId: String? = null) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
                 val currentUser = supabaseClient.auth.currentUserOrNull()
                 val userId = targetEmployerId ?: currentUser?.id ?: return@launch
+
                 val responseList = supabaseClient.postgrest["profiles"]
                     .select { filter { eq("id", userId) } }
                     .decodeList<Map<String, JsonElement>>()
@@ -84,9 +88,7 @@ class EmployerProfileViewModel(
                 val dbAvatarUrl = profileMap?.get("avatar_url")?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
                 val dbUserName = profileMap?.get("full_name")?.jsonPrimitive?.content.orEmpty()
 
-
                 val profileEmail = profileMap?.get("email")?.jsonPrimitive?.content?.takeIf { it.isNotBlank() && it != "null" }
-                android.util.Log.d("DEBUG_EMAIL", "profileEmail: $profileEmail")
 
                 val finalEmail = if (!profileEmail.isNullOrBlank()) {
                     profileEmail
@@ -96,8 +98,6 @@ class EmployerProfileViewModel(
                             "get_employer_email",
                             mapOf("target_user_id" to userId)
                         ).decodeAs<String>()
-
-                        android.util.Log.d("DEBUG_EMAIL", "RPC Result: $rpcResult")
                         rpcResult
                     } catch (e: Exception) {
                         android.util.Log.e("DEBUG_EMAIL", "RPC Error: ${e.localizedMessage}")
@@ -150,17 +150,21 @@ class EmployerProfileViewModel(
         }
     }
 
+    // ----------------------------------------------------
+    // 2. 讀取該雇主的刊登職缺 (對應 Supabase 的 "jobs" 資料表)
+    // ----------------------------------------------------
     fun loadActiveJobs(employerId: String? = null) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingJobs = true) }
             try {
-                val userId = employerId ?: supabaseClient.auth.currentUserOrNull()?.id ?: return@launch
+                val targetId = employerId ?: return@launch
+
+                android.util.Log.d("DEBUG_JOBS", "正在為雇主 ID 查詢職缺: $targetId")
 
                 val jobsList = supabaseClient.postgrest["jobs"]
                     .select {
                         filter {
-                            eq("employer_id", userId)
-                            eq("status", "open")
+                            eq("employer_id", targetId)
                         }
                     }
                     .decodeList<JobSummaryDto>()
@@ -169,10 +173,12 @@ class EmployerProfileViewModel(
                             id = dto.id,
                             title = dto.title,
                             category = dto.category.orEmpty(),
-                            salary = dto.salary.orEmpty(),
+                            salary = dto.salary?.toString().orEmpty(), // 轉成字串
                             status = dto.status.orEmpty()
                         )
                     }
+
+                android.util.Log.d("DEBUG_JOBS", "成功撈到的職缺數量: ${jobsList.size}")
 
                 _uiState.update {
                     it.copy(
@@ -181,6 +187,7 @@ class EmployerProfileViewModel(
                     )
                 }
             } catch (e: Exception) {
+                android.util.Log.e("DEBUG_JOBS", "Load jobs error: ${e.localizedMessage}")
                 _uiState.update { it.copy(isLoadingJobs = false) }
             }
         }
@@ -199,6 +206,9 @@ class EmployerProfileViewModel(
     fun resetUpdateSuccess() { _uiState.update { it.copy(updateSuccess = false) } }
     fun clearError() { _uiState.update { it.copy(errorMessage = null) } }
 
+    // ----------------------------------------------------
+    // 3. 儲存個人檔案 (更新至 Supabase 的 "profiles" 資料表)
+    // ----------------------------------------------------
     fun saveProfile(context: Context) {
         viewModelScope.launch {
             val companyName = _uiState.value.companyName.trim()
@@ -248,7 +258,6 @@ class EmployerProfileViewModel(
                 val fullPhoneToSave = "+60$rawDigits"
                 val userEmail = currentUser.email.orEmpty()
 
-                // 將 email 一起放進更新參數中寫入資料庫
                 val updateParams = buildMap {
                     put("full_name", _uiState.value.userName.trim())
                     put("company_name", companyName)

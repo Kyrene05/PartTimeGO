@@ -72,12 +72,10 @@ fun CompanyDetailRoute(
     onBackClick: () -> Unit = {},
     onJobClick: (String) -> Unit = {}
 ) {
-    // 透過你原本的 Factory 建立 ViewModel，避開預設無參數建構的限制
     val viewModel: EmployerProfileViewModel = viewModel(
         factory = EmployerProfileViewModelFactory(supabaseClient)
     )
 
-    // 當進入畫面或 employerId 改變時，自動載入該雇主的個人檔案與職缺
     LaunchedEffect(employerId) {
         if (employerId.isNotBlank()) {
             viewModel.loadUserProfile(employerId)
@@ -145,7 +143,6 @@ fun CompanyDetailScreen(
                     CircularProgressIndicator(color = DarkNavy)
                 }
             } else {
-                // 使用 LazyColumn 提升長列表捲動效能
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
@@ -372,8 +369,20 @@ private fun ActiveJobItemCard(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
+
+                // 自動格式化價格：加上 RM 前綴與 /day 後綴
+                val formattedSalary = when {
+                    job.salary.isBlank() -> "RM 0/day"
+                    else -> {
+                        val cleanSalary = job.salary.replace("RM", "", ignoreCase = true)
+                            .replace("/day", "", ignoreCase = true)
+                            .trim()
+                        "RM $cleanSalary/day"
+                    }
+                }
+
                 Text(
-                    text = job.salary,
+                    text = formattedSalary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF16A34A)
@@ -412,8 +421,8 @@ fun CompanyDetailScreenPreview() {
                 companyEmail = "mixue@example.com",
                 companyBackground = "Mixue is a famous F&B chain store specializing in ice cream and fresh tea. We welcome energetic young people to join our team!",
                 activeJobs = listOf(
-                    JobItemSummary("1", "Event Crew", "Events", "RM 100/day", "open"),
-                    JobItemSummary("2", "Promoter", "Retail", "RM 120/day", "open")
+                    JobItemSummary("1", "Event Crew", "Events", "100.0", "open"),
+                    JobItemSummary("2", "Promoter", "Retail", "120.0", "open")
                 ),
                 isLoading = false
             )
