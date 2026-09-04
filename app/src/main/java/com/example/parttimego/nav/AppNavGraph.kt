@@ -30,6 +30,7 @@ import com.example.parttimego.screen.CompanyDetailRoute
 import com.example.parttimego.screen.DashboardScreen
 import com.example.parttimego.screen.DetailsScreen
 import com.example.parttimego.screen.EditEmployerProfileRoute
+import com.example.parttimego.screen.EditJobSeekerProfileRoute
 import com.example.parttimego.screen.EmployerProfileRoute
 import com.example.parttimego.screen.ForgotPasswordScreen
 import com.example.parttimego.screen.JobSeekerDetailScreen
@@ -619,7 +620,6 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             val editViewModel: EmployerProfileViewModel = viewModel(
                 factory = EmployerProfileViewModelFactory(SupabaseClient.client)
             )
-
             EditEmployerProfileRoute(
                 viewModel = editViewModel,
                 onBackClick = {
@@ -916,6 +916,18 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                     navController.navigate(Screen.Login.route) {
                         popUpTo(0) { inclusive = true }
                     }
+                }
+            )
+        }
+        composable(route = "edit_job_seeker_profile") {
+            val jobSeekerViewModel: JobSeekerViewModel = viewModel(
+                factory = JobSeekerViewModelFactory(SupabaseClient.client)
+            )
+
+            EditJobSeekerProfileRoute(
+                viewModel = jobSeekerViewModel,
+                onBackClick = {
+                    navController.popBackStack()
                 }
             )
         }
