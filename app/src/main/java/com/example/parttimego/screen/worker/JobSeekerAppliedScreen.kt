@@ -66,6 +66,8 @@ fun JobSeekerAppliedScreen(
             .currentUserOrNull()
             ?.id
 
+    android.util.Log.d("DebugUserId", "JobSeekerAppliedScreen opened, userId=$userId")
+
     var applications by remember {
         mutableStateOf(
             emptyList<
@@ -438,20 +440,32 @@ private fun ApplicationCard(
                     )
                 }
 
-                "accepted" -> {
+                "rejected" -> {
+                    StatusText(
+                        text = "Not selected this time",
+                        color = Grey
+                    )
+                }
 
+                "accepted" -> {
                     Text(
                         text = "Application Accepted!",
                         color = Green,
-                        fontWeight =
-                            FontWeight.Bold,
+                        fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
 
-                    Spacer(
-                        modifier =
-                            Modifier.height(10.dp)
-                    )
+                    if (!application.employerNote.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "\"${application.employerNote}\"",
+                            color = Grey,
+                            fontSize = 13.sp,
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     Row(
                         modifier =

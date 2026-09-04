@@ -13,7 +13,8 @@ data class JobApplicationDto(
     @SerialName("job_id") val jobId: String,
     @SerialName("applicant_id") val applicantId: String,
     val status: String,
-    @SerialName("applied_at") val appliedAt: String? = null
+    @SerialName("applied_at") val appliedAt: String? = null,
+    @SerialName("employer_note") val employerNote: String? = null
 )
 
 @Serializable
@@ -35,6 +36,8 @@ data class ApplicantProfileDto(
 
 class ApplicationRepository {
     private val postgrest get() = SupabaseClient.client.postgrest
+
+
 
     suspend fun getApplicationsForEmployer(employerId: String): List<Triple<JobApplicationDto, JobSummaryDto, ApplicantProfileDto?>> {
         return try {
@@ -60,7 +63,7 @@ class ApplicationRepository {
 
             val profiles = postgrest["worker"]
                 .select {
-                    filter { isIn("worker_id", applicantIds) }
+                    filter { isIn("user_id", applicantIds) }
                 }
                 .decodeList<Worker>()
 
@@ -104,19 +107,21 @@ class ApplicationRepository {
         }
     }
 
-    suspend fun updateApplicationStatus(applicationId: String, status: String) {
-        android.util.Log.d("ApplicationRepo", "Attempting update with applicationId='$applicationId'")
+    suspend fun updateApplicationStatus(
+        applicationId: String,
+        status: String,
+        employerNote: String? = null
+    ) {
         try {
-            val result = postgrest["job_applications"].update(
-                mapOf("status" to status)
-            ) {
+            val updateFields = buildMap<String, String> {
+                put("status", status)
+                employerNote?.let { put("employer_note", it) }
+            }
+            postgrest["job_applications"].update(updateFields) {
                 filter { eq("id", applicationId) }
-                select()
-            }.decodeList<JobApplicationDto>()
-
-            android.util.Log.d("ApplicationRepo", "Updated ${result.size} rows")
+            }
         } catch (e: Exception) {
-            android.util.Log.e("ApplicationRepo", "Update failed", e)
+            e.printStackTrace()
         }
     }
 
@@ -126,7 +131,6 @@ class ApplicationRepository {
     ): List<Pair<JobApplicationDto, JobSummaryDto>> {
 
         return try {
-
             val applications = postgrest["job_applications"]
                 .select {
                     filter {
@@ -139,7 +143,14 @@ class ApplicationRepository {
                 return emptyList()
             }
 
-            val jobIds = applications.map { it.jobId }
+            // Filter out nulls BEFORE building the query — a job_id can be null
+            // if the job was deleted (see on delete set null), and passing null
+            // into isIn() breaks the query for every row, not just the null ones.
+            val jobIds = applications.mapNotNull { it.jobId }.distinct()
+
+            if (jobIds.isEmpty()) {
+                return emptyList()
+            }
 
             val jobs = postgrest["jobs"]
                 .select {
@@ -152,13 +163,8 @@ class ApplicationRepository {
             val jobsById = jobs.associateBy { it.id }
 
             applications.mapNotNull { application ->
-                val job = jobsById[application.jobId]
-
-                if (job != null) {
-                    Pair(application, job)
-                } else {
-                    null
-                }
+                val job = application.jobId?.let { jobsById[it] }
+                if (job != null) Pair(application, job) else null
             }
 
         } catch (e: Exception) {
@@ -171,28 +177,22 @@ class ApplicationRepository {
         jobId: String,
         applicantId: String
     ): Boolean {
-
         return try {
-
-            val applications =
-                postgrest["job_applications"]
-                    .select {
-                        filter {
-                            eq(
-                                "job_id",
-                                jobId
-                            )
-
-                            eq(
-                                "applicant_id",
-                                applicantId
-                            )
-                        }
+            val applications = postgrest["job_applications"]
+                .select {
+                    filter {
+                        eq("job_id", jobId)
+                        eq("applicant_id", applicantId)
                     }
-                    .decodeList<JobApplicationDto>()
+                }
+                .decodeList<JobApplicationDto>()
 
-            applications.isNotEmpty()
-
+            // Only pending/accepted count as "actively applied" — a job the
+            // employer already rejected, or one the applicant already resolved
+            // (done_accepted/done_rejected), shouldn't block re-applying.
+            applications.any {
+                it.status == "pending" || it.status == "accepted" || it.status == "done_accepted"
+            }
         } catch (e: Exception) {
             false
         }
@@ -202,6 +202,7 @@ class ApplicationRepository {
         jobId: String,
         applicantId: String
     ) {
+        android.util.Log.d("DebugApply", "applyForJob CALLED: jobId=$jobId, applicantId=$applicantId")
         postgrest["job_applications"]
             .insert(
                 mapOf(
@@ -221,20 +222,12 @@ class ApplicationRepository {
         jobId: String,
         applicantId: String
     ) {
-
         postgrest["job_applications"]
             .delete {
                 filter {
-
-                    eq(
-                        "job_id",
-                        jobId
-                    )
-
-                    eq(
-                        "applicant_id",
-                        applicantId
-                    )
+                    eq("job_id", jobId)
+                    eq("applicant_id", applicantId)
+                    eq("status", "pending")
                 }
             }
     }

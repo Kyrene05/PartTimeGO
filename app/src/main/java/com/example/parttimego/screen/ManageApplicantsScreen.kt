@@ -45,7 +45,11 @@ data class ApplicantUiModel(
     val status: ApplicantStatus
 )
 
-enum class ApplicantStatus { ACCEPTED, PENDING, REJECTED }
+// CONFIRMED / DECLINED represent the applicant's own final response after being
+// accepted by the employer (maps to "done_accepted" / "done_rejected" in the DB) —
+// distinct from ACCEPTED (employer said yes, waiting on applicant) and REJECTED
+// (employer said no, terminal).
+enum class ApplicantStatus { ACCEPTED, PENDING, REJECTED, CONFIRMED, DECLINED }
 
 @Composable
 fun ManageApplicantsScreen(
@@ -67,7 +71,10 @@ fun ManageApplicantsScreen(
 
     val accepted = applicants.count { it.status == ApplicantStatus.ACCEPTED }
     val pending = applicants.count { it.status == ApplicantStatus.PENDING }
-    val rejected = applicants.count { it.status == ApplicantStatus.REJECTED }
+    val rejected = applicants.count { it.status == ApplicantStatus.REJECTED || it.status == ApplicantStatus.DECLINED }
+    // Confirmed/Declined aren't given their own tab yet — they're still visible
+    // via their badge on whichever tab surfaces them, see filter note below.
+    val confirmed = applicants.count { it.status == ApplicantStatus.CONFIRMED }
 
     val filtered = applicants.filter { it.status == selectedFilter }
 
@@ -121,9 +128,12 @@ fun ManageApplicantsScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Accepted tab now also counts CONFIRMED, since a confirmed applicant
+                // is still "accepted" from the employer's point of view — the badge on
+                // each card still shows the more specific Confirmed/Declined state.
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     StatusTab(
-                        count = accepted,
+                        count = accepted + confirmed,
                         label = "Accepted",
                         selected = selectedFilter == ApplicantStatus.ACCEPTED,
                         accentColor = Color(0xFF4CAF50),
@@ -152,7 +162,16 @@ fun ManageApplicantsScreen(
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
                 color = Color.White
             ) {
-                if (filtered.isEmpty()) {
+                // Accepted tab shows both ACCEPTED and CONFIRMED applicants together —
+                // the badge on each card distinguishes "waiting on applicant" from
+                // "applicant confirmed".
+                val visibleList = when (selectedFilter) {
+                    ApplicantStatus.ACCEPTED -> applicants.filter { it.status == ApplicantStatus.ACCEPTED || it.status == ApplicantStatus.CONFIRMED }
+                    ApplicantStatus.REJECTED -> applicants.filter { it.status == ApplicantStatus.REJECTED || it.status == ApplicantStatus.DECLINED }
+                    else -> filtered
+                }
+
+                if (visibleList.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text("No applicants here yet", color = MutedText, fontSize = 14.sp)
                     }
@@ -164,7 +183,7 @@ fun ManageApplicantsScreen(
                             .padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        filtered.forEach { applicant ->
+                        visibleList.forEach { applicant ->
                             ApplicantCard(
                                 applicant = applicant,
                                 onAcceptClick = {
@@ -190,7 +209,7 @@ fun ManageApplicantsScreen(
                 Text(
                     if (isAccept) "Accept this applicant?" else "Reject this applicant?",
                     fontWeight = FontWeight.Bold,
-                    color=DarkNavy
+                    color = DarkNavy
                 )
             },
             text = {
@@ -309,7 +328,7 @@ private fun ApplicantCard(
                         text = "View Profile ›",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = DarkNavy, //
+                        color = DarkNavy,
                         modifier = Modifier
                             .clickable {
                                 // TODO: Navigate to applicant profile page later
@@ -355,6 +374,29 @@ private fun ApplicantCard(
                     }
                 }
             }
+
+            // CONFIRMED means the applicant already accepted the offer on their
+            // side — nothing left for the employer to do here except see it.
+            if (applicant.status == ApplicantStatus.CONFIRMED) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Applicant confirmed — ready to work",
+                    fontSize = 12.sp,
+                    color = Color(0xFF1565C0),
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            // DECLINED means the applicant backed out after being accepted.
+            if (applicant.status == ApplicantStatus.DECLINED) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Applicant declined the offer",
+                    fontSize = 12.sp,
+                    color = Color(0xFF616161),
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }
@@ -365,9 +407,17 @@ private fun StatusBadge(status: ApplicantStatus) {
         ApplicantStatus.ACCEPTED -> Triple("Accepted", Color(0xFFE8F5E9), Color(0xFF2E7D32))
         ApplicantStatus.PENDING -> Triple("Pending", Color(0xFFFFF3E0), Color(0xFFE65100))
         ApplicantStatus.REJECTED -> Triple("Rejected", Color(0xFFFFEBEE), Color(0xFFC62828))
+        ApplicantStatus.CONFIRMED -> Triple("Confirmed", Color(0xFFE3F2FD), Color(0xFF1565C0))
+        ApplicantStatus.DECLINED -> Triple("Declined", Color(0xFFF5F5F5), Color(0xFF616161))
     }
     Surface(shape = RoundedCornerShape(6.dp), color = bg) {
-        Text(label, color = fg, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
+        Text(
+            label,
+            color = fg,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+        )
     }
 }
 
@@ -412,6 +462,24 @@ fun ManageApplicantsScreenPreview() {
                     salary = "RM 120 / day",
                     appliedDate = "9 Jul 2026",
                     status = ApplicantStatus.ACCEPTED
+                ),
+                ApplicantUiModel(
+                    id = "5",
+                    name = "Priya Devi",
+                    jobTitle = "F&B",
+                    location = "Gurney Plaza",
+                    salary = "RM 90 / day",
+                    appliedDate = "8 Jul 2026",
+                    status = ApplicantStatus.CONFIRMED
+                ),
+                ApplicantUiModel(
+                    id = "6",
+                    name = "Wei Liang",
+                    jobTitle = "Retail",
+                    location = "Queensbay Mall",
+                    salary = "RM 100 / day",
+                    appliedDate = "7 Jul 2026",
+                    status = ApplicantStatus.DECLINED
                 )
             )
         )

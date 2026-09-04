@@ -76,7 +76,7 @@ sealed class Screen(val route: String) {
     object UpdatePassword : Screen("update_password")
     object Dashboard : Screen("dashboard")
     object PostJob : Screen("post_job")
-    object JobSeekerHome : Screen("job_seeker_home") // TODO: change to job seeker homepage
+    object JobSeekerHome : Screen("job_seeker_home")
     object JobSeekerGigListing : Screen("job_seeker_gig_listing")
     object JobSeekerGigDetail : Screen("job_seeker_gig_details/{jobId}") {
         fun createRoute(jobId: String) = "job_seeker_gig_details/$jobId"
@@ -180,7 +180,7 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                     val destination = if (role == "employer") {
                         Screen.Dashboard.route
                     } else {
-                        Screen.JobSeekerHome.route // TODO: change to real job seeker homepage
+                        Screen.JobSeekerHome.route
                     }
                     navController.navigate(destination) {
                         popUpTo(Screen.Login.route) { inclusive = true }
@@ -481,6 +481,8 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                             status = when (app.status) {
                                 "accepted" -> ApplicantStatus.ACCEPTED
                                 "rejected" -> ApplicantStatus.REJECTED
+                                "done_accepted" -> ApplicantStatus.CONFIRMED
+                                "done_rejected" -> ApplicantStatus.DECLINED
                                 else -> ApplicantStatus.PENDING
                             }
                         )
@@ -495,8 +497,8 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                     coroutineScope.launch {
                         applicationRepository.updateApplicationStatus(
                             applicationId = applicationId,
-                            status = "accepted"
-                            // employerNote = note  // uncomment once the DB column & repository method are ready
+                            status = "accepted",
+                            employerNote = note.ifBlank { null }
                         )
                         applicants = applicants.map {
                             if (it.id == applicationId) it.copy(status = ApplicantStatus.ACCEPTED) else it
@@ -626,7 +628,7 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             )
         }
 
-        // TODO: Job Seeker home
+        //Job Seeker home
         composable(Screen.JobSeekerHome.route) {
             JobSeekerHomeScreen(
                 onGigClick = { jobId ->
