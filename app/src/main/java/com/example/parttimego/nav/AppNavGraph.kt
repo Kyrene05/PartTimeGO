@@ -20,7 +20,7 @@ import androidx.navigation.navArgument
 import com.example.parttimego.data.JobPost
 import com.example.parttimego.data.SupabaseClient
 import com.example.parttimego.data.local.JobEntity
-import com.example.parttimego.data.model.Worker
+import com.example.parttimego.data.model.JobSeeker
 import com.example.parttimego.data.repository.ApplicationRepository
 import com.example.parttimego.screen.ApplicantStatus
 import com.example.parttimego.screen.ApplicantUiModel
@@ -28,8 +28,10 @@ import com.example.parttimego.screen.ChangePasswordRoute
 import com.example.parttimego.screen.DashboardScreen
 import com.example.parttimego.screen.DetailsScreen
 import com.example.parttimego.screen.EditEmployerProfileRoute
+import com.example.parttimego.screen.EditJobSeekerProfileRoute
 import com.example.parttimego.screen.EmployerProfileRoute
 import com.example.parttimego.screen.ForgotPasswordScreen
+import com.example.parttimego.screen.JobSeekerSettingRoute
 import com.example.parttimego.screen.JobStatusFilter
 import com.example.parttimego.screen.LoginScreen
 import com.example.parttimego.screen.ManageApplicantsScreen
@@ -49,6 +51,8 @@ import com.example.parttimego.viewmodel.AuthState
 import com.example.parttimego.viewmodel.AuthViewModel
 import com.example.parttimego.viewmodel.EmployerProfileViewModel
 import com.example.parttimego.viewmodel.EmployerProfileViewModelFactory
+import com.example.parttimego.viewmodel.JobSeekerViewModel
+import com.example.parttimego.viewmodel.JobSeekerViewModelFactory
 import com.example.parttimego.viewmodel.JobViewModel
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionSource
@@ -83,6 +87,7 @@ sealed class Screen(val route: String) {
     }
     object JobSeekerApplied : Screen("job_seeker_applied")
     object JobSeekerProfile : Screen("job_seeker_profile")
+    object JobSeekerSetting : Screen("job_seeker_setting")
     object EditJobSeekerProfile : Screen("edit_job_seeker_profile")
     object EmployerProfile : Screen("employer_profile")
     object EditEmployerProfile : Screen("edit_employer_profile")
@@ -768,215 +773,174 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             val currentUserId =
                 currentUser?.id
 
-            var worker by remember {
-                mutableStateOf<Worker?>(null)
-            }
+            val fullName = currentUser?.userMetadata?.get("full_name")?.toString()?.trim('"') ?: "User"
+            val email = currentUser?.email ?: ""
 
-            var isLoading by remember {
-                mutableStateOf(true)
+            var worker by remember {
+                mutableStateOf(
+                    JobSeeker(
+                        jobSeekerId = currentUserId ?: "",
+                        userId = currentUserId ?: "",
+                        jobSeekerName = fullName,
+                        jobSeekerPhoneNo = "",
+                        jobSeekerEmail = email,
+                        jobSeekerAvailability = false,
+                        jobSeekerAvailabilityDay = "",
+                        jobSeekerPreferredJobCategories = "",
+                        jobSeekerSkills = "",
+                        jobSeekerPreferredState = "",
+                        jobSeekerPreferredLocation = "",
+                        jobSeekerWorkHistory = "",
+                        jobSeekerCreatedAt = "",
+                        jobSeekerUpdatedAt = ""
+                    )
+                )
             }
 
             LaunchedEffect(currentUserId) {
-
-                isLoading = true
-
                 if (currentUserId != null) {
-
                     try {
-
-                        // FIRST: TRY TO GET EXISTING WORKER PROFILE
-                        worker =
+                        val existingWorker =
                             SupabaseClient.client
                                 .postgrest["worker"]
                                 .select {
                                     filter {
-                                        eq(
-                                            "user_id",
-                                            currentUserId
-                                        )
+                                        eq("user_id", currentUserId)
                                     }
                                 }
-                                .decodeSingleOrNull<Worker>()
+                                .decodeSingleOrNull<JobSeeker>()
 
-                        // CHANGE: IF OLD USER DOES NOT HAVE WORKER PROFILE,
-                        // CREATE ONE AUTOMATICALLY
-                        if (worker == null) {
-
-                            val fullName =
-                                currentUser
-                                    .userMetadata
-                                    ?.get("full_name")
-                                    ?.toString()
-                                    ?.trim('"')
-                                    ?: "User"
-
-                            val email =
-                                currentUser.email
-                                    ?: ""
-
-                            val now =
-                                java.time.OffsetDateTime
-                                    .now()
-                                    .toString()
+                        if (existingWorker != null) {
+                            worker = existingWorker
+                        } else {
+                            val now = java.time.OffsetDateTime.now().toString()
+                            val newWorkerMap = mapOf(
+                                "worker_id" to currentUserId,
+                                "user_id" to currentUserId,
+                                "worker_name" to fullName,
+                                "worker_phoneNo" to "",
+                                "worker_email" to email,
+                                "worker_availability" to false,
+                                "worker_availabilityDay" to "",
+                                "worker_preferredJobCategories" to "",
+                                "worker_skills" to "",
+                                "worker_preferredState" to "",
+                                "worker_preferredLocation" to "",
+                                "worker_workHistory" to "",
+                                "worker_createdAt" to now,
+                                "worker_updatedAt" to now
+                            )
 
                             SupabaseClient.client
                                 .postgrest["worker"]
-                                .insert(
-                                    mapOf(
-                                        "worker_id" to currentUserId,
-                                        "user_id" to currentUserId,
-                                        "worker_name" to fullName,
-                                        "worker_phoneNo" to "",
-                                        "worker_email" to email,
-                                        "worker_availability" to false,
-                                        "worker_availabilityDay" to "",
-                                        "worker_preferredJobCategories" to "",
-                                        "worker_skills" to "",
-                                        "worker_preferredState" to "",
-                                        "worker_preferredLocation" to "",
-                                        "worker_workHistory" to "",
-                                        "worker_createdAt" to now,
-                                        "worker_updatedAt" to now
-                                    )
-                                )
+                                .insert(newWorkerMap)
 
-                            // GET THE NEWLY CREATED PROFILE
-                            worker =
+                            val freshWorker =
                                 SupabaseClient.client
                                     .postgrest["worker"]
                                     .select {
                                         filter {
-                                            eq(
-                                                "user_id",
-                                                currentUserId
-                                            )
+                                            eq("user_id", currentUserId)
                                         }
                                     }
-                                    .decodeSingleOrNull<Worker>()
-                        }
+                                    .decodeSingleOrNull<JobSeeker>()
 
+                            if (freshWorker != null) {
+                                worker = freshWorker
+                            }
+                        }
                     } catch (e: Exception) {
-
                         e.printStackTrace()
-
-                        // CHANGE: FALLBACK PROFILE SO SCREEN WILL NOT CRASH
-                        val fullName =
-                            currentUser
-                                ?.userMetadata
-                                ?.get("full_name")
-                                ?.toString()
-                                ?.trim('"')
-                                ?: "User"
-
-                        val email =
-                            currentUser
-                                ?.email
-                                ?: ""
-
-                        worker =
-                            Worker(
-                                workerId = currentUserId,
-                                userId = currentUserId,
-                                workerName = fullName,
-                                workerPhoneNo = "",
-                                workerEmail = email,
-                                workerAvailability = false,
-                                workerAvailabilityDay = "",
-                                workerPreferredJobCategories = "",
-                                workerSkills = "",
-                                workerPreferredState = "",
-                                workerPreferredLocation = "",
-                                workerWorkHistory = "",
-                                workerCreatedAt = "",
-                                workerUpdatedAt = ""
-                            )
                     }
-
-                } else {
-
-                    worker = null
                 }
-
-                isLoading = false
             }
 
-            when {
+            JobSeekerProfileScreen(
+                worker = worker,
 
-                isLoading -> {
-
-                    Text(
-                        text = "Loading profile..."
+                onSettingClick = {
+                    navController.navigate(
+                        Screen.JobSeekerSetting.route
                     )
-                }
+                },
 
-                worker != null -> {
+                onAvailabilityChange = { available ->
+                    worker = worker.copy(
+                        jobSeekerAvailability = available
+                    )
+                },
 
-                    JobSeekerProfileScreen(
-                        worker = worker!!,
-
-                        onEditProfileClick = {
-                            navController.navigate(
-                                Screen.EditJobSeekerProfile.route
-                            )
-                        },
-
-                        onAvailabilityChange = { available ->
-
-                            worker =
-                                worker?.copy(
-                                    workerAvailability = available
-                                )
-                        },
-
-                        onHomeClick = {
-
-                            navController.navigate(
-                                Screen.JobSeekerHome.route
-                            ) {
-                                popUpTo(
-                                    Screen.JobSeekerHome.route
-                                ) {
-                                    inclusive = false
-                                }
-
-                                launchSingleTop = true
-                            }
-                        },
-
-                        onExploreClick = {
-
-                            navController.navigate(
-                                Screen.JobSeekerGigListing.route
-                            ) {
-                                launchSingleTop = true
-                            }
-                        },
-
-                        onAppliedClick = {
-
-                            navController.navigate(
-                                Screen.JobSeekerApplied.route
-                            ) {
-                                launchSingleTop = true
-                            }
+                onHomeClick = {
+                    navController.navigate(
+                        Screen.JobSeekerHome.route
+                    ) {
+                        popUpTo(
+                            Screen.JobSeekerHome.route
+                        ) {
+                            inclusive = false
                         }
-                    )
-                }
+                        launchSingleTop = true
+                    }
+                },
 
-                else -> {
+                onExploreClick = {
+                    navController.navigate(
+                        Screen.JobSeekerGigListing.route
+                    ) {
+                        launchSingleTop = true
+                    }
+                },
 
-                    Text(
-                        text = "Unable to load profile"
-                    )
+                onAppliedClick = {
+                    navController.navigate(
+                        Screen.JobSeekerApplied.route
+                    ) {
+                        launchSingleTop = true
+                    }
                 }
-            }
+            )
+        }
+        //setting screen
+        composable(route = Screen.JobSeekerSetting.route) {
+            val viewModel: JobSeekerViewModel = viewModel(
+                factory = JobSeekerViewModelFactory(
+                    supabaseClient = SupabaseClient.client
+                )
+            )
+            JobSeekerSettingRoute(
+                viewModel = viewModel,
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onEditProfileClick = {
+                    navController.navigate(Screen.EditJobSeekerProfile.route)
+                },
+                onChangePasswordClick = {},
+                onTermsClick = {},
+                onMoreOptionsClick = {},
+                onLogoutNavigateToLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
         }
 
-        composable(
-            route = Screen.EditJobSeekerProfile.route
-        ) {
-            Text("Edit Job Seeker Profile")
+        //edit profile screen
+        composable(route = Screen.EditJobSeekerProfile.route) {
+            val viewModel: JobSeekerViewModel = viewModel(
+                factory = JobSeekerViewModelFactory(
+                    supabaseClient = SupabaseClient.client
+                )
+            )
+            EditJobSeekerProfileRoute(
+                viewModel = viewModel,
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
         }
+
     }
 }
 

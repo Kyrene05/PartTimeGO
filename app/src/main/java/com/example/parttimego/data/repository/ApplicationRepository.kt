@@ -1,7 +1,7 @@
 package com.example.parttimego.data.repository
 
 import com.example.parttimego.data.SupabaseClient
-import com.example.parttimego.data.model.Worker
+import com.example.parttimego.data.model.JobSeeker
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -65,10 +65,10 @@ class ApplicationRepository {
                 .select {
                     filter { isIn("user_id", applicantIds) }
                 }
-                .decodeList<Worker>()
+                .decodeList<JobSeeker>()
 
             val jobsById = jobs.associateBy { it.id }
-            val workersByUserId = profiles.associateBy { it.workerId }
+            val workersByUserId = profiles.associateBy { it.jobSeekerId }
 
             applications.mapNotNull { app ->
                 val job = jobsById[app.jobId] ?: return@mapNotNull null
@@ -76,7 +76,7 @@ class ApplicationRepository {
 
                 val resolvedProfile= ApplicantProfileDto(
                     id=app.applicantId,
-                    fullName=worker?.workerName
+                    fullName=worker?.jobSeekerName
                 )
                 Triple(app,job,resolvedProfile)
             }

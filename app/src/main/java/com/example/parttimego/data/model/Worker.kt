@@ -4,46 +4,46 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class Worker(
+data class JobSeeker(
     @SerialName("worker_id")
-    val workerId: String,
+    val jobSeekerId: String = "",
 
     @SerialName("user_id")
-    val userId: String,
+    val userId: String = "",
 
     @SerialName("worker_name")
-    val workerName: String,
+    val jobSeekerName: String = "",
 
     @SerialName("worker_phoneNo")
-    val workerPhoneNo: String,
+    val jobSeekerPhoneNo: String = "",
 
     @SerialName("worker_email")
-    val workerEmail: String,
+    val jobSeekerEmail: String = "",
 
     @SerialName("worker_availability")
-    val workerAvailability: Boolean,
+    val jobSeekerAvailability: Boolean = true,
 
     @SerialName("worker_availabilityDay")
-    val workerAvailabilityDay: String = "",
+    val jobSeekerAvailabilityDay: String = "",
 
     @SerialName("worker_preferredJobCategories")
-    val workerPreferredJobCategories: String,
+    val jobSeekerPreferredJobCategories: String = "",
 
     @SerialName("worker_skills")
-    val workerSkills: String,
+    val jobSeekerSkills: String = "",
 
     @SerialName("worker_preferredState")
-    val workerPreferredState: String,
+    val jobSeekerPreferredState: String = "",
 
     @SerialName("worker_preferredLocation")
-    val workerPreferredLocation: String,
+    val jobSeekerPreferredLocation: String = "",
 
     @SerialName("worker_workHistory")
-    val workerWorkHistory: String,
+    val jobSeekerWorkHistory: String = "",
 
     @SerialName("worker_createdAt")
-    val workerCreatedAt: String,
+    val jobSeekerCreatedAt: String? = null,
 
     @SerialName("worker_updatedAt")
-    val workerUpdatedAt: String
+    val jobSeekerUpdatedAt: String? = null
 )

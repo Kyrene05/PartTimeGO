@@ -1,48 +1,47 @@
 package com.example.parttimego.data.repository
 
-
-import com.example.parttimego.data.model.Worker
+import com.example.parttimego.data.model.JobSeeker
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 
 class JobSeekerRepository(
     private val supabase: SupabaseClient
-){
-    // make sure the userId is match with workerId
-    suspend fun getWorkerByUserId (userId: String): Worker? {
+) {
+    // 根据 userId 获取 JobSeeker
+    suspend fun getJobSeekerByUserId(userId: String): JobSeeker? {
         return supabase
             .from("worker")
             .select {
-                filter{
+                filter {
                     eq("user_id", userId)
                 }
             }
-            .decodeSingleOrNull<Worker>()
+            .decodeSingleOrNull<JobSeeker>()
     }
 
-    // CRUD
-    suspend fun createWorker (worker: Worker){
+    // CRUD 操作
+    suspend fun createJobSeeker(jobSeeker: JobSeeker) {
         supabase
             .from("worker")
-            .insert(worker)
+            .insert(jobSeeker)
     }
 
-    suspend fun updateWorker (worker: Worker){
+    suspend fun updateJobSeeker(jobSeeker: JobSeeker) {
         supabase
             .from("worker")
-            .update(worker) {
+            .update(jobSeeker) {
                 filter {
-                    eq("worker_id", worker.workerId)
+                    eq("worker_id", jobSeeker.jobSeekerId)
                 }
             }
     }
 
-    suspend fun deleteWorker (worker: Worker){
+    suspend fun deleteJobSeeker(jobSeeker: JobSeeker) {
         supabase
             .from("worker")
-            .delete{
+            .delete {
                 filter {
-                    eq("worker_id", worker.workerId)
+                    eq("worker_id", jobSeeker.jobSeekerId)
                 }
             }
     }

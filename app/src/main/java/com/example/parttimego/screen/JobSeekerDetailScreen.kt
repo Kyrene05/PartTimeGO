@@ -24,19 +24,19 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.parttimego.ui.theme.DarkNavy
 import com.example.parttimego.ui.theme.SoftGrey
-import com.example.parttimego.viewmodel.WorkerUiState
+import com.example.parttimego.viewmodel.JobSeekerUiState
 
 // 数据模型：定义单条 Gig 历史记录
 data class GigExperienceItem(
-    val title: String,      // 兼职名称，例如 "Event Promoter"
-    val companyName: String, // 雇主/公司名称，例如 "XYZ Agency"
-    val dateText: String     // 日期，例如 "2026-08-15"
+    val title: String,
+    val companyName: String,
+    val dateText: String
 )
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun WorkerDetailScreen(
-    uiState: WorkerUiState,
+fun JobSeekerDetailScreen(
+    uiState: JobSeekerUiState,
     completedGigsCount: Int = uiState.completedGigsCount,        // 默认直接绑定 uiState
     ratingScore: Double = 5.0,                                     // 评分
     gigExperiences: List<GigExperienceItem> = uiState.gigExperiences, // 默认直接绑定 uiState
@@ -47,7 +47,7 @@ fun WorkerDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Worker Detail",
+                        text = "Job Seeker Detail",
                         color = Color.White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
@@ -126,7 +126,7 @@ fun WorkerDetailScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = uiState.userName.ifBlank { "Worker" },
+                                text = uiState.userName.ifBlank { "Job Seeker" },
                                 color = Color.White,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold
@@ -389,14 +389,14 @@ private fun ChipItem(text: String, backgroundColor: Color, textColor: Color) {
 
 @Preview(showBackground = true)
 @Composable
-fun WorkerDetailScreenPreview() {
+fun JobSeekerDetailScreenPreview() {
     MaterialTheme {
-        WorkerDetailScreen(
-            uiState = WorkerUiState(
+        JobSeekerDetailScreen(
+            uiState = JobSeekerUiState(
                 userName = "Jane Doe",
                 gender = "Female",
                 phone = "+60123456789",
-                aboutMe = "Responsible and punctual part-time worker with 2 years of retail experience.",
+                aboutMe = "Responsible and punctual part-time job seeker with 2 years of retail experience.",
                 availability = false,
                 availableDays = listOf("Sat", "Sun"),
                 skills = listOf("Kotlin", "Jetpack Compose"),

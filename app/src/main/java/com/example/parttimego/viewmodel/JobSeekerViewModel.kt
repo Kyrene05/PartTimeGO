@@ -5,7 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.parttimego.data.model.Worker
+import com.example.parttimego.data.model.JobSeeker
 import com.example.parttimego.data.repository.JobSeekerRepository
 import com.example.parttimego.screen.GigExperienceItem
 import io.github.jan.supabase.SupabaseClient
@@ -23,7 +23,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.jsonPrimitive
 
 @Serializable
-data class WorkerProfileDto(
+data class JobSeekerProfileDto(
     @SerialName("full_name") val userName: String? = null,
     @SerialName("phone") val phone: String? = null,
     @SerialName("avatar_url") val avatarUrl: String? = null,
@@ -31,18 +31,19 @@ data class WorkerProfileDto(
     @SerialName("about_me") val aboutMe: String? = null
 )
 
+// DTO 中的 @SerialName 映射 Supabase 原生字段名，绝对不能变
 @Serializable
-data class WorkerDetailDto(
-    @SerialName("worker_id") val workerId: String? = null,
-    @SerialName("worker_name") val workerName: String? = null,
-    @SerialName("worker_phoneNo") val workerPhoneNo: String? = null,
-    @SerialName("worker_availability") val workerAvailability: Boolean? = true,
-    @SerialName("worker_availableDays") val workerAvailableDays: String? = null, // 存储如 "Mon, Tue, Sat"
-    @SerialName("worker_skills") val workerSkills: String? = null,
-    @SerialName("worker_preferredLocation") val workerPreferredLocation: String? = null,
-    @SerialName("worker_preferredState") val workerPreferredState: String? = null,
-    @SerialName("worker_preferredJobCategories") val workerPreferredJobCategories: String? = null,
-    @SerialName("worker_workHistory") val workerWorkHistory: String? = null,
+data class JobSeekerDetailDto(
+    @SerialName("worker_id") val jobSeekerId: String? = null,
+    @SerialName("worker_name") val jobSeekerName: String? = null,
+    @SerialName("worker_phoneNo") val jobSeekerPhoneNo: String? = null,
+    @SerialName("worker_availability") val jobSeekerAvailability: Boolean? = true,
+    @SerialName("worker_availableDays") val jobSeekerAvailableDays: String? = null, // 存储如 "Mon, Tue, Sat"
+    @SerialName("worker_skills") val jobSeekerSkills: String? = null,
+    @SerialName("worker_preferredLocation") val jobSeekerPreferredLocation: String? = null,
+    @SerialName("worker_preferredState") val jobSeekerPreferredState: String? = null,
+    @SerialName("worker_preferredJobCategories") val jobSeekerPreferredJobCategories: String? = null,
+    @SerialName("worker_workHistory") val jobSeekerWorkHistory: String? = null,
     @SerialName("user_id") val userId: String? = null
 )
 
@@ -55,7 +56,7 @@ data class GigHistoryDto(
     @SerialName("status") val status: String? = null
 )
 
-data class WorkerUiState(
+data class JobSeekerUiState(
     val userName: String = "",
     val phone: String = "",
     val email: String = "",
@@ -74,20 +75,20 @@ data class WorkerUiState(
     val completedGigsCount: Int = 0,
     val gigExperiences: List<GigExperienceItem> = emptyList(),
 
-    val worker: Worker? = null,
+    val jobSeeker: JobSeeker? = null,
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val updateSuccess: Boolean = false,
     val errorMessage: String? = null
 )
 
-class WorkerViewModel(
+class JobSeekerViewModel(
     private val supabaseClient: SupabaseClient,
     private val repository: JobSeekerRepository? = null
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(WorkerUiState())
-    val uiState: StateFlow<WorkerUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(JobSeekerUiState())
+    val uiState: StateFlow<JobSeekerUiState> = _uiState.asStateFlow()
 
     init {
         loadUserProfile()
@@ -108,14 +109,15 @@ class WorkerViewModel(
 
                 val profile = supabaseClient.postgrest["profiles"]
                     .select { filter { eq("id", userId) } }
-                    .decodeSingleOrNull<WorkerProfileDto>()
+                    .decodeSingleOrNull<JobSeekerProfileDto>()
 
-                val workerDetail = supabaseClient.postgrest["workers"]
+                // Supabase 中的表名仍为 "workers"
+                val jobSeekerDetail = supabaseClient.postgrest["workers"]
                     .select { filter { eq("user_id", userId) } }
-                    .decodeSingleOrNull<WorkerDetailDto>()
+                    .decodeSingleOrNull<JobSeekerDetailDto>()
 
-                mapDtoToUiState(profile, workerDetail, email, registeredName)
-                loadWorker(userId)
+                mapDtoToUiState(profile, jobSeekerDetail, email, registeredName)
+                loadJobSeeker(userId)
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -128,30 +130,31 @@ class WorkerViewModel(
     }
 
 
-    fun loadWorkerByWorkerId(workerId: String) {
+    fun loadJobSeekerByJobSeekerId(jobSeekerId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                val workerDetail = supabaseClient.postgrest["workers"]
-                    .select { filter { eq("worker_id", workerId) } }
-                    .decodeSingleOrNull<WorkerDetailDto>()
+                // Supabase 中的表名和字段名保持原样
+                val jobSeekerDetail = supabaseClient.postgrest["workers"]
+                    .select { filter { eq("worker_id", jobSeekerId) } }
+                    .decodeSingleOrNull<JobSeekerDetailDto>()
 
-                var profile: WorkerProfileDto? = null
-                if (!workerDetail?.userId.isNullOrBlank()) {
+                var profile: JobSeekerProfileDto? = null
+                if (!jobSeekerDetail?.userId.isNullOrBlank()) {
                     profile = supabaseClient.postgrest["profiles"]
-                        .select { filter { eq("id", workerDetail!!.userId!!) } }
-                        .decodeSingleOrNull<WorkerProfileDto>()
+                        .select { filter { eq("id", jobSeekerDetail!!.userId!!) } }
+                        .decodeSingleOrNull<JobSeekerProfileDto>()
                 }
 
                 var totalGigsCount = 0
                 var recentGigs = emptyList<GigExperienceItem>()
 
-                if (!workerDetail?.workerId.isNullOrBlank()) {
-                    // 计算完成的总 Gigs 数
+                if (!jobSeekerDetail?.jobSeekerId.isNullOrBlank()) {
+                    // 计算完成的总 Gigs 数，后端字段为 worker_id
                     val allCompletedGigs = supabaseClient.postgrest["gigs"]
                         .select {
                             filter {
-                                eq("worker_id", workerDetail!!.workerId!!)
+                                eq("worker_id", jobSeekerDetail!!.jobSeekerId!!)
                                 eq("status", "COMPLETED")
                             }
                         }
@@ -162,7 +165,7 @@ class WorkerViewModel(
                     recentGigs = supabaseClient.postgrest["gigs"]
                         .select {
                             filter {
-                                eq("worker_id", workerDetail!!.workerId!!)
+                                eq("worker_id", jobSeekerDetail!!.jobSeekerId!!)
                                 eq("status", "COMPLETED")
                             }
                             order("completed_at", order = Order.DESCENDING)
@@ -178,7 +181,7 @@ class WorkerViewModel(
                         }
                 }
 
-                mapDtoToUiState(profile, workerDetail, "", null)
+                mapDtoToUiState(profile, jobSeekerDetail, "", null)
                 _uiState.update {
                     it.copy(
                         completedGigsCount = totalGigsCount,
@@ -190,7 +193,7 @@ class WorkerViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Failed to load worker detail: ${e.message}"
+                        errorMessage = "Failed to load job seeker detail: ${e.message}"
                     )
                 }
             }
@@ -198,20 +201,20 @@ class WorkerViewModel(
     }
 
     private fun mapDtoToUiState(
-        profile: WorkerProfileDto?,
-        workerDetail: WorkerDetailDto?,
+        profile: JobSeekerProfileDto?,
+        jobSeekerDetail: JobSeekerDetailDto?,
         email: String,
         registeredName: String?
     ) {
         val finalUserName = when {
-            !workerDetail?.workerName.isNullOrBlank() -> workerDetail.workerName
+            !jobSeekerDetail?.jobSeekerName.isNullOrBlank() -> jobSeekerDetail.jobSeekerName
             !profile?.userName.isNullOrBlank() -> profile.userName
             !registeredName.isNullOrBlank() -> registeredName
             email.isNotBlank() -> email.substringBefore("@")
             else -> ""
         }
 
-        val rawPhone = (workerDetail?.workerPhoneNo ?: profile?.phone).orEmpty().trim()
+        val rawPhone = (jobSeekerDetail?.jobSeekerPhoneNo ?: profile?.phone).orEmpty().trim()
         val formattedPhone = when {
             rawPhone.isBlank() -> ""
             rawPhone.startsWith("+60") -> rawPhone
@@ -219,23 +222,23 @@ class WorkerViewModel(
             else -> "+60$rawPhone"
         }
 
-        val parsedSkills = workerDetail?.workerSkills
+        val parsedSkills = jobSeekerDetail?.jobSeekerSkills
             ?.split(",")
             ?.map { it.trim() }
             ?.filter { it.isNotBlank() }
             ?: emptyList()
 
         val locations = mutableListOf<String>()
-        workerDetail?.workerPreferredLocation?.let { if (it.isNotBlank()) locations.add(it) }
-        workerDetail?.workerPreferredState?.let { if (it.isNotBlank()) locations.add(it) }
+        jobSeekerDetail?.jobSeekerPreferredLocation?.let { if (it.isNotBlank()) locations.add(it) }
+        jobSeekerDetail?.jobSeekerPreferredState?.let { if (it.isNotBlank()) locations.add(it) }
 
-        val parsedCategories = workerDetail?.workerPreferredJobCategories
+        val parsedCategories = jobSeekerDetail?.jobSeekerPreferredJobCategories
             ?.split(",")
             ?.map { it.trim() }
             ?.filter { it.isNotBlank() }
             ?: emptyList()
 
-        val parsedDays = workerDetail?.workerAvailableDays
+        val parsedDays = jobSeekerDetail?.jobSeekerAvailableDays
             ?.split(",")
             ?.map { it.trim() }
             ?.filter { it.isNotBlank() }
@@ -250,12 +253,12 @@ class WorkerViewModel(
                 aboutMe = profile?.aboutMe.orEmpty(),
                 avatarUrl = profile?.avatarUrl,
 
-                availability = workerDetail?.workerAvailability ?: true,
+                availability = jobSeekerDetail?.jobSeekerAvailability ?: true,
                 availableDays = parsedDays,
                 skills = parsedSkills,
                 preferredLocations = locations,
                 preferredCategories = parsedCategories,
-                workHistory = workerDetail?.workerWorkHistory ?: "None",
+                workHistory = jobSeekerDetail?.jobSeekerWorkHistory ?: "None",
 
                 isLoading = false
             )
@@ -267,6 +270,7 @@ class WorkerViewModel(
         viewModelScope.launch {
             try {
                 val userId = supabaseClient.auth.currentUserOrNull()?.id ?: return@launch
+                // 更新 Supabase 表 `workers` 的字段 `worker_availability`
                 supabaseClient.postgrest["workers"].update(
                     mapOf("worker_availability" to isAvailable)
                 ) {
@@ -291,6 +295,7 @@ class WorkerViewModel(
             try {
                 val userId = supabaseClient.auth.currentUserOrNull()?.id ?: return@launch
                 val daysString = currentDays.joinToString(", ")
+                // 更新 Supabase 表 `workers` 的字段 `worker_availableDays`
                 supabaseClient.postgrest["workers"].update(
                     mapOf("worker_availableDays" to daysString)
                 ) {
@@ -353,11 +358,12 @@ class WorkerViewModel(
                     filter { eq("id", userId) }
                 }
 
-                val workerUpdateParams = buildMap {
+                // 更新 Supabase `workers` 表的原生字段 `worker_name` 和 `worker_phoneNo`
+                val jobSeekerUpdateParams = buildMap {
                     put("worker_name", _uiState.value.userName.trim())
                     put("worker_phoneNo", fullPhoneToSave)
                 }
-                supabaseClient.postgrest["workers"].update(workerUpdateParams) {
+                supabaseClient.postgrest["workers"].update(jobSeekerUpdateParams) {
                     filter { eq("user_id", userId) }
                 }
 
@@ -381,53 +387,53 @@ class WorkerViewModel(
         }
     }
 
-    fun loadWorker(userId: String) {
+    fun loadJobSeeker(userId: String) {
         val repo = repository ?: return
         viewModelScope.launch {
             try {
-                val workerData = repo.getWorkerByUserId(userId)
-                _uiState.update { it.copy(worker = workerData) }
+                val jobSeekerData = repo.getJobSeekerByUserId(userId)
+                _uiState.update { it.copy(jobSeeker = jobSeekerData) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(errorMessage = e.message ?: "Failed to load worker profile.") }
+                _uiState.update { it.copy(errorMessage = e.message ?: "Failed to load job seeker profile.") }
             }
         }
     }
 
-    fun createWorker(worker: Worker) {
+    fun createJobSeeker(jobSeeker: JobSeeker) {
         val repo = repository ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                repo.createWorker(worker)
-                _uiState.update { it.copy(worker = worker, isLoading = false) }
+                repo.createJobSeeker(jobSeeker)
+                _uiState.update { it.copy(jobSeeker = jobSeeker, isLoading = false) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message ?: "Failed to create worker profile.") }
+                _uiState.update { it.copy(isLoading = false, errorMessage = e.message ?: "Failed to create job seeker profile.") }
             }
         }
     }
 
-    fun updateWorker(worker: Worker) {
+    fun updateJobSeeker(jobSeeker: JobSeeker) {
         val repo = repository ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                repo.updateWorker(worker)
-                _uiState.update { it.copy(worker = worker, isLoading = false) }
+                repo.updateJobSeeker(jobSeeker)
+                _uiState.update { it.copy(jobSeeker = jobSeeker, isLoading = false) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message ?: "Failed to update worker profile.") }
+                _uiState.update { it.copy(isLoading = false, errorMessage = e.message ?: "Failed to update job seeker profile.") }
             }
         }
     }
 
-    fun deleteWorker(worker: Worker) {
+    fun deleteJobSeeker(jobSeeker: JobSeeker) {
         val repo = repository ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                repo.deleteWorker(worker)
-                _uiState.update { it.copy(worker = null, isLoading = false) }
+                repo.deleteJobSeeker(jobSeeker)
+                _uiState.update { it.copy(jobSeeker = null, isLoading = false) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message ?: "Failed to delete worker profile.") }
+                _uiState.update { it.copy(isLoading = false, errorMessage = e.message ?: "Failed to delete job seeker profile.") }
             }
         }
     }
@@ -462,14 +468,14 @@ class WorkerViewModel(
     }
 }
 
-class WorkerViewModelFactory(
+class JobSeekerViewModelFactory(
     private val supabaseClient: SupabaseClient,
     private val repository: JobSeekerRepository? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(WorkerViewModel::class.java)) {
-            return WorkerViewModel(supabaseClient, repository) as T
+        if (modelClass.isAssignableFrom(JobSeekerViewModel::class.java)) {
+            return JobSeekerViewModel(supabaseClient, repository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

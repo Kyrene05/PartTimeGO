@@ -61,7 +61,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.parttimego.data.SupabaseClient
 import com.example.parttimego.data.local.JobEntity
-import com.example.parttimego.data.model.Worker
+import com.example.parttimego.data.model.JobSeeker
 import com.example.parttimego.data.repository.ApplicationRepository
 import com.example.parttimego.nav.JobSeekerNavBar
 import com.example.parttimego.nav.JobSeekerNavItem
@@ -137,13 +137,13 @@ fun JobSeekerHomeScreen(
                                 )
                             }
                         }
-                        .decodeSingleOrNull<Worker>()
+                        .decodeSingleOrNull<JobSeeker>()
 
                 if (
                     worker != null &&
-                    worker.workerName.isNotBlank()
+                    worker.jobSeekerName.isNotBlank()
                 ) {
-                    userName = worker.workerName
+                    userName = worker.jobSeekerName
                 }
 
             } catch (e: Exception) {

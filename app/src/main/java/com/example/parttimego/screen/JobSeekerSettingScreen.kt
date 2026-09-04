@@ -69,8 +69,8 @@ import com.example.parttimego.ui.theme.DarkNavy
 import com.example.parttimego.ui.theme.MutedText
 import com.example.parttimego.ui.theme.PartTimeGOTheme
 import com.example.parttimego.ui.theme.SoftGrey
-import com.example.parttimego.viewmodel.WorkerUiState
-import com.example.parttimego.viewmodel.WorkerViewModel
+import com.example.parttimego.viewmodel.JobSeekerUiState
+import com.example.parttimego.viewmodel.JobSeekerViewModel
 
 data class SettingMenuItem(
     val title: String,
@@ -100,8 +100,8 @@ private fun openWhatsAppSupport(
 }
 
 @Composable
-fun WorkerSettingRoute(
-    viewModel: WorkerViewModel = viewModel(),
+fun JobSeekerSettingRoute(
+    viewModel: JobSeekerViewModel = viewModel(),
     onBackClick: () -> Unit = {},
     onEditProfileClick: () -> Unit = {},
     onChangePasswordClick: () -> Unit = {},
@@ -116,7 +116,7 @@ fun WorkerSettingRoute(
         viewModel.loadUserProfile()
     }
 
-    WorkerSettingScreen(
+    JobSeekerSettingScreen(
         uiState = uiState,
         onBackClick = onBackClick,
         onEditProfileClick = onEditProfileClick,
@@ -134,8 +134,8 @@ fun WorkerSettingRoute(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WorkerSettingScreen(
-    uiState: WorkerUiState,
+fun JobSeekerSettingScreen(
+    uiState: JobSeekerUiState,
     onBackClick: () -> Unit = {},
     onEditProfileClick: () -> Unit = {},
     onChangePasswordClick: () -> Unit = {},
@@ -424,10 +424,10 @@ private fun SettingMenuItemRow(item: SettingMenuItem) {
 
 @Preview(showBackground = true)
 @Composable
-fun WorkerSettingScreenPreview() {
+fun JobSeekerSettingScreenPreview() {
     PartTimeGOTheme {
-        WorkerSettingScreen(
-            uiState = WorkerUiState(
+        JobSeekerSettingScreen(
+            uiState = JobSeekerUiState(
                 userName = "Alex Tan",
                 phone = "+60123456789",
                 email = "alex.tan@example.com",

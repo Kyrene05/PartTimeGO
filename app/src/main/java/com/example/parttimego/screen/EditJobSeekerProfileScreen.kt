@@ -63,12 +63,12 @@ import coil.compose.AsyncImage
 import com.example.parttimego.ui.theme.DarkNavy
 import com.example.parttimego.ui.theme.PartTimeGOTheme
 import com.example.parttimego.ui.theme.SoftGrey
-import com.example.parttimego.viewmodel.WorkerUiState
-import com.example.parttimego.viewmodel.WorkerViewModel
+import com.example.parttimego.viewmodel.JobSeekerUiState
+import com.example.parttimego.viewmodel.JobSeekerViewModel
 
 @Composable
-fun EditWorkerProfileRoute(
-    viewModel: WorkerViewModel = viewModel(),
+fun EditJobSeekerProfileRoute(
+    viewModel: JobSeekerViewModel = viewModel(),
     onBackClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -89,7 +89,7 @@ fun EditWorkerProfileRoute(
         }
     }
 
-    EditWorkerProfileScreen(
+    EditJobSeekerProfileScreen(
         uiState = uiState,
         onBackClick = onBackClick,
         onImageSelected = { uri -> viewModel.onAvatarSelected(uri) },
@@ -103,8 +103,8 @@ fun EditWorkerProfileRoute(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditWorkerProfileScreen(
-    uiState: WorkerUiState,
+fun EditJobSeekerProfileScreen(
+    uiState: JobSeekerUiState,
     onBackClick: () -> Unit = {},
     onImageSelected: (Uri) -> Unit = {},
     onUserNameChange: (String) -> Unit = {},
@@ -128,7 +128,6 @@ fun EditWorkerProfileScreen(
     val phoneDigits = uiState.phone.removePrefix("+60").removePrefix("60").filter { it.isDigit() }
     val isPhoneTooShort = phoneDigits.isNotEmpty() && phoneDigits.length < 8
 
-    // 验证必填字段：名字不为空、电话号码不为空且不少于8位、性别已选择
     val isFormValid = uiState.userName.isNotBlank() &&
             phoneDigits.isNotBlank() &&
             !isPhoneTooShort &&
@@ -203,7 +202,7 @@ fun EditWorkerProfileScreen(
                             } else if (!uiState.avatarUrl.isNullOrBlank()) {
                                 AsyncImage(
                                     model = uiState.avatarUrl,
-                                    contentDescription = "Worker Avatar",
+                                    contentDescription = "Job Seeker Avatar",
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
                                 )
@@ -426,10 +425,10 @@ fun EditWorkerProfileScreen(
 
 @Preview(showBackground = true)
 @Composable
-fun EditWorkerProfileScreenPreview() {
+fun EditJobSeekerProfileScreenPreview() {
     PartTimeGOTheme {
-        EditWorkerProfileScreen(
-            uiState = WorkerUiState(
+        EditJobSeekerProfileScreen(
+            uiState = JobSeekerUiState(
                 userName = "Alex Tan",
                 gender = "Male",
                 phone = "123456789",

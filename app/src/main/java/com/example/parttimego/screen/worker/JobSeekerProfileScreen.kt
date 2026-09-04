@@ -42,25 +42,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.parttimego.data.model.Worker
+import com.example.parttimego.data.model.JobSeeker
 import com.example.parttimego.nav.JobSeekerNavBar
 import com.example.parttimego.nav.JobSeekerNavItem
 import com.example.parttimego.ui.theme.PartTimeGOTheme
 
 @Composable
 fun JobSeekerProfileScreen(
-    worker: Worker,
-    onEditProfileClick: () -> Unit = {},
+    worker: JobSeeker,
+    onSettingClick: () -> Unit = {},
     onHomeClick: () -> Unit = {},
     onExploreClick: () -> Unit = {},
     onAppliedClick: () -> Unit = {},
     onAvailabilityChange: (Boolean) -> Unit = {}
 ) {
-    var isAvailable by remember(worker.workerAvailability) {
-        mutableStateOf(worker.workerAvailability)
+    var isAvailable by remember(worker.jobSeekerAvailability) {
+        mutableStateOf(worker.jobSeekerAvailability)
     }
 
     Box(
@@ -75,7 +74,7 @@ fun JobSeekerProfileScreen(
             // Profile Header
             JobSeekerProfileHeader(
                 worker = worker,
-                onEditProfileClick = onEditProfileClick
+                onEditProfileClick = onSettingClick
             )
 
             // White Content Area
@@ -105,7 +104,7 @@ fun JobSeekerProfileScreen(
                     item {
                         AvailabilityCard(
                             available = isAvailable,
-                            availableDays = worker.workerAvailabilityDay
+                            availableDays = worker.jobSeekerAvailabilityDay
                                 .split(",")
                                 .map { it.trim() }
                                 .filter { it.isNotEmpty() },
@@ -127,7 +126,7 @@ fun JobSeekerProfileScreen(
                     }
 
                     item {
-                        val skills = worker.workerSkills
+                        val skills = worker.jobSeekerSkills
                             .split(",")
                             .map { it.trim() }
                             .filter { it.isNotEmpty() }
@@ -146,7 +145,7 @@ fun JobSeekerProfileScreen(
                     }
 
                     item {
-                        val locations = worker.workerPreferredLocation
+                        val locations = worker.jobSeekerPreferredLocation
                             .split(",")
                             .map { it.trim() }
                             .filter { it.isNotEmpty() }
@@ -167,7 +166,7 @@ fun JobSeekerProfileScreen(
 
                     item {
                         GigExperienceCard(
-                            workHistory = worker.workerWorkHistory
+                            workHistory = worker.jobSeekerWorkHistory
                         )
                     }
                 }
@@ -187,7 +186,7 @@ fun JobSeekerProfileScreen(
 
 @Composable
 private fun JobSeekerProfileHeader(
-    worker: Worker,
+    worker: JobSeeker,
     onEditProfileClick: () -> Unit
 ) {
     Column(
@@ -251,7 +250,7 @@ private fun JobSeekerProfileHeader(
             ) {
 
                 Text(
-                    text = worker.workerName
+                    text = worker.jobSeekerName
                         .firstOrNull()
                         ?.uppercase()
                         ?: "A",
@@ -279,7 +278,7 @@ private fun JobSeekerProfileHeader(
 
             Column {
                 Text(
-                    text = worker.workerName,
+                    text = worker.jobSeekerName,
                     color = Color.White,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
@@ -300,7 +299,7 @@ private fun JobSeekerProfileHeader(
                     Spacer(Modifier.width(5.dp))
 
                     Text(
-                        text = worker.workerEmail,
+                        text = worker.jobSeekerEmail,
                         color = Color.White,
                         fontSize = 12.sp
                     )
@@ -321,7 +320,7 @@ private fun JobSeekerProfileHeader(
                     Spacer(Modifier.width(5.dp))
 
                     Text(
-                        text = worker.workerPhoneNo,
+                        text = worker.jobSeekerPhoneNo,
                         color = Color.White,
                         fontSize = 12.sp
                     )
@@ -389,46 +388,46 @@ private fun AvailabilityCard(
                     )
                 }
 
-            Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(10.dp))
 
-            Column(
-                Modifier.weight(1f)
-            ) {
-                Text(
-                    text = if (available) {
-                        "Available Everyday"
-                    } else {
-                        getAvailabilityText(selectedDays)
+                Column(
+                    Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = if (available) {
+                            "Available Everyday"
+                        } else {
+                            getAvailabilityText(selectedDays)
+                        },
+                        color = Color.Black,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Switch(
+                    checked = available,
+                    onCheckedChange = { value ->
+
+                        onAvailabilityChange(value)
+
+                        // If user turns ON, they are available every day
+                        if (value) {
+                            showDaySelection = false
+                        } else {
+                            showDaySelection = true
+                        }
                     },
-                    color = Color.Black,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = Color(0xFF118C20),
+                        uncheckedThumbColor = Color.White,
+                        uncheckedTrackColor = Color(0xFF8E8E80)
+                    )
                 )
             }
 
-            Switch(
-                checked = available,
-                onCheckedChange = { value ->
-
-                    onAvailabilityChange(value)
-
-                    // If user turns ON, they are available every day
-                    if (value) {
-                        showDaySelection = false
-                    } else {
-                        showDaySelection = true
-                    }
-                },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = Color(0xFF118C20),
-                    uncheckedThumbColor = Color.White,
-                    uncheckedTrackColor = Color(0xFF8E8E80)
-                )
-            )
-        }
-
-        // Only show day selection when toggle is OFF
+            // Only show day selection when toggle is OFF
             if (!available && showDaySelection) {
 
                 Spacer(Modifier.height(10.dp))
@@ -716,4 +715,3 @@ private fun getAvailabilityText(
     }
     return "Every" + selectedDays.joinToString(", ")
 }
-
