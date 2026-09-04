@@ -62,8 +62,9 @@ class EmployerProfileViewModel(
     private val _uiState = MutableStateFlow(EmployerProfileUiState())
     val uiState: StateFlow<EmployerProfileUiState> = _uiState.asStateFlow()
 
-    // 移除原本會自動呼叫 loadUserProfile() 的 init，
-    // 改由 Composable 中的 LaunchedEffect 統一傳入目標 employerId 觸發，避免抓到自己的資料。
+    init {
+        loadUserProfile()
+    }
 
     fun loadUserProfile(targetEmployerId: String? = null) {
         viewModelScope.launch {
@@ -247,6 +248,7 @@ class EmployerProfileViewModel(
                 val fullPhoneToSave = "+60$rawDigits"
                 val userEmail = currentUser.email.orEmpty()
 
+                // 將 email 一起放進更新參數中寫入資料庫
                 val updateParams = buildMap {
                     put("full_name", _uiState.value.userName.trim())
                     put("company_name", companyName)
