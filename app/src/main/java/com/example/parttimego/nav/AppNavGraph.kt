@@ -1,5 +1,6 @@
 package com.example.parttimego.nav
 
+import androidx.activity.ComponentActivity
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.material3.Text
@@ -11,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -826,14 +828,13 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
         }
 
         composable(Screen.JobSeekerProfile.route) {
+            // Activity-scoped: the Profile state survives when the Profile
+            // destination is left and recreated by navigation.
             val viewModel: JobSeekerViewModel = viewModel(
+                viewModelStoreOwner = LocalContext.current as ComponentActivity,
                 factory = JobSeekerViewModelFactory(supabaseClient = SupabaseClient.client)
             )
             val uiState by viewModel.uiState.collectAsState<JobSeekerUiState>()
-
-            LaunchedEffect(Unit) {
-                viewModel.loadUserProfile()
-            }
 
             val currentUserId = SupabaseClient.client.auth.currentUserOrNull()?.id.orEmpty()
             val worker = remember(uiState, currentUserId) {
@@ -863,6 +864,9 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
                 },
                 onAvailabilityChange = { isAvailable ->
                     viewModel.updateAvailability(isAvailable)
+                },
+                onAvailableDaysChange = { days ->
+                    viewModel.updateAvailableDays(days)
                 },
                 onUpdateSkills = { newSkills ->
                     viewModel.updateSkills(newSkills)
@@ -932,73 +936,7 @@ fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel =
             )
         }
 
-        // Job Seeker Profile Screen
-        composable(Screen.JobSeekerProfile.route) {
-            val viewModel: JobSeekerViewModel = viewModel(
-                factory = JobSeekerViewModelFactory(supabaseClient = SupabaseClient.client)
-            )
-            val uiState by viewModel.uiState.collectAsState<JobSeekerUiState>()
 
-            LaunchedEffect(Unit) {
-                viewModel.loadUserProfile()
-            }
-
-            // Map UiState to the JobSeeker model expected by JobSeekerProfileScreen
-            val currentUserId = SupabaseClient.client.auth.currentUserOrNull()?.id.orEmpty()
-            val worker = remember(uiState, currentUserId) {
-                JobSeeker(
-                    jobSeekerId = currentUserId,
-                    userId = currentUserId,
-                    jobSeekerName = uiState.userName,
-                    jobSeekerPhoneNo = uiState.phone,
-                    jobSeekerEmail = uiState.email,
-                    jobSeekerAvailability = uiState.availability,
-                    jobSeekerSkills = uiState.skills.joinToString(", "),
-                    jobSeekerPreferredState = uiState.preferredStates.joinToString(", "),
-                    jobSeekerPreferredLocation = uiState.preferredLocations.joinToString(", "),
-                    jobSeekerWorkHistory = uiState.workHistory
-                )
-            }
-
-            JobSeekerProfileScreen(
-                worker = worker,
-                uiState = uiState,
-                onSettingClick = {
-                    navController.navigate(Screen.JobSeekerSetting.route)
-                },
-                onAvailabilityChange = { isAvailable ->
-                    viewModel.updateAvailability(isAvailable)
-                },
-                onUpdateSkills = { newSkills ->
-                    viewModel.updateSkills(newSkills)
-                },
-                onUpdatePreferredLocation = { newLocations ->
-                    viewModel.updatePreferredLocation(newLocations)
-                },
-                onUpdatePreferredState = { newStates ->
-                    viewModel.updatePreferredState(newStates)
-                },
-                onUpdateWorkHistory = { newWorkHistory ->
-                    viewModel.updateWorkHistory(newWorkHistory)
-                },
-                onHomeClick = {
-                    navController.navigate(Screen.JobSeekerHome.route) {
-                        popUpTo(Screen.JobSeekerHome.route) { inclusive = false }
-                        launchSingleTop = true
-                    }
-                },
-                onExploreClick = {
-                    navController.navigate(Screen.JobSeekerGigListing.route) {
-                        launchSingleTop = true
-                    }
-                },
-                onAppliedClick = {
-                    navController.navigate(Screen.JobSeekerApplied.route) {
-                        launchSingleTop = true
-                    }
-                }
-            )
-        }
     }
 }
 

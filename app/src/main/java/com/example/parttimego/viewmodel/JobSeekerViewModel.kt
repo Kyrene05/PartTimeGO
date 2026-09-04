@@ -456,6 +456,24 @@ class JobSeekerViewModel(
     }
 
     // Save CSV string or list updates for Skills
+    fun updateAvailableDays(days: List<String>) {
+        val daysString = days.joinToString(", ")
+        _uiState.update { it.copy(availableDays = days) }
+
+        viewModelScope.launch {
+            try {
+                val userId = supabaseClient.auth.currentUserOrNull()?.id ?: return@launch
+                supabaseClient.postgrest["worker"].update(
+                    mapOf("worker_availableDays" to daysString)
+                ) {
+                    filter { eq("user_id", userId) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Failed to update available days: ${e.message}") }
+            }
+        }
+    }
+
     fun updateSkills(skillsCsv: String) {
         val skillsList = skillsCsv.split(",").map { it.trim() }.filter { it.isNotBlank() }
         _uiState.update { it.copy(skills = skillsList) }

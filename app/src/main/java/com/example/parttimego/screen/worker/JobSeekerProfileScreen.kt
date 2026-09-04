@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Settings
@@ -70,6 +71,7 @@ fun JobSeekerProfileScreen(
     onExploreClick: () -> Unit = {},
     onAppliedClick: () -> Unit = {},
     onAvailabilityChange: (Boolean) -> Unit = {},
+    onAvailableDaysChange: (List<String>) -> Unit = {},
     onUpdateSkills: (String) -> Unit = {},
     onUpdatePreferredLocation: (String) -> Unit = {},
     onUpdatePreferredState: (String) -> Unit = {},
@@ -90,6 +92,7 @@ fun JobSeekerProfileScreen(
     }
 
     var showAddSkillDialog by remember { mutableStateOf(false) }
+    var skillToRemove by remember { mutableStateOf<String?>(null) }
 
     var gigExperiences by remember(worker.jobSeekerWorkHistory) {
         mutableStateOf(
@@ -99,11 +102,13 @@ fun JobSeekerProfileScreen(
                 worker.jobSeekerWorkHistory
                     .split("\n\n")
                     .filter { it.isNotBlank() }
+                    .filterNot { it.trim().equals("None", ignoreCase = true) }
             }
         )
     }
 
     var showAddExperienceDialog by remember { mutableStateOf(false) }
+    var experienceToRemove by remember { mutableStateOf<String?>(null) }
 
     var selectedLocations by remember(worker.jobSeekerPreferredLocation) {
         mutableStateOf(
@@ -164,7 +169,7 @@ fun JobSeekerProfileScreen(
                                 isAvailable = value
                                 onAvailabilityChange(value)
                             },
-                            onAvailableDaysChange = {}
+                            onAvailableDaysChange = onAvailableDaysChange
                         )
                     }
 
@@ -175,7 +180,8 @@ fun JobSeekerProfileScreen(
                         FlowChipRow(
                             chips = skills,
                             showAddButton = true,
-                            onAddClick = { showAddSkillDialog = true }
+                            onAddClick = { showAddSkillDialog = true },
+                            onRemoveClick = { skill -> skillToRemove = skill }
                         )
                     }
 
@@ -248,7 +254,8 @@ fun JobSeekerProfileScreen(
                     item {
                         GigExperienceSection(
                             experiences = gigExperiences,
-                            onAddClick = { showAddExperienceDialog = true }
+                            onAddClick = { showAddExperienceDialog = true },
+                            onRemoveClick = { experience -> experienceToRemove = experience }
                         )
                     }
                 }
@@ -285,6 +292,65 @@ fun JobSeekerProfileScreen(
                     gigExperiences = updatedExperiences
                     onUpdateWorkHistory(updatedExperiences.joinToString("\n\n"))
                     showAddExperienceDialog = false
+                }
+            )
+        }
+
+        if (skillToRemove != null) {
+            AlertDialog(
+                onDismissRequest = { skillToRemove = null },
+                title = { Text("Remove Skill") },
+                text = { Text("Are you sure you want to remove ${skillToRemove.orEmpty()}?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            val skill = skillToRemove
+                            if (skill != null) {
+                                val updatedSkills = skills.filterNot { it == skill }
+                                skills = updatedSkills
+                                onUpdateSkills(updatedSkills.joinToString(","))
+                            }
+                            skillToRemove = null
+                        }
+                    ) {
+                        Text("Confirm")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { skillToRemove = null }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        if (experienceToRemove != null) {
+            AlertDialog(
+                onDismissRequest = { experienceToRemove = null },
+                title = { Text("Remove Gig Experience") },
+                text = { Text("Are you sure you want to remove this gig experience?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            val experience = experienceToRemove
+                            if (experience != null) {
+                                val updatedExperiences = gigExperiences.filterNot { it == experience }
+                                gigExperiences = updatedExperiences
+                                onUpdateWorkHistory(
+                                    if (updatedExperiences.isEmpty()) "None"
+                                    else updatedExperiences.joinToString("\n\n")
+                                )
+                            }
+                            experienceToRemove = null
+                        }
+                    ) {
+                        Text("Confirm")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { experienceToRemove = null }) {
+                        Text("Cancel")
+                    }
                 }
             )
         }
@@ -571,7 +637,8 @@ private fun FlowChipRow(
     chips: List<String>,
     chipType: ChipType = ChipType.PURPLE,
     showAddButton: Boolean,
-    onAddClick: () -> Unit = {}
+    onAddClick: () -> Unit = {},
+    onRemoveClick: (String) -> Unit = {}
 ) {
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
@@ -579,7 +646,11 @@ private fun FlowChipRow(
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         chips.forEach { chip ->
-            ProfileChip(text = chip, chipType = chipType)
+            ProfileChip(
+                text = chip,
+                chipType = chipType,
+                onRemoveClick = { onRemoveClick(chip) }
+            )
         }
 
         if (showAddButton) {
@@ -653,7 +724,11 @@ private fun StateOption(
 }
 
 @Composable
-private fun ProfileChip(text: String, chipType: ChipType) {
+private fun ProfileChip(
+    text: String,
+    chipType: ChipType,
+    onRemoveClick: () -> Unit
+) {
     val backgroundColor = when (chipType) {
         ChipType.PURPLE -> Color(0xFF262075).copy(alpha = 0.5f)
         ChipType.GRAY -> Color(0xFF8E8E80).copy(alpha = 0.5f)
@@ -667,13 +742,26 @@ private fun ProfileChip(text: String, chipType: ChipType) {
         shape = RoundedCornerShape(8.dp),
         color = backgroundColor
     ) {
-        Text(
-            text = text,
-            color = textColor,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(8.dp, 5.dp)
-        )
+        Row(
+            modifier = Modifier.padding(start = 8.dp, end = 5.dp, top = 4.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = text,
+                color = textColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(Modifier.width(4.dp))
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Remove $text",
+                tint = textColor,
+                modifier = Modifier
+                    .size(14.dp)
+                    .clickable { onRemoveClick() }
+            )
+        }
     }
 }
 
@@ -798,7 +886,10 @@ private fun AddGigExperienceDialog(
 }
 
 @Composable
-private fun GigExperienceCard(experience: GigExperience?) {
+private fun GigExperienceCard(
+    experience: GigExperience?,
+    onRemoveClick: () -> Unit = {}
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -826,6 +917,15 @@ private fun GigExperienceCard(experience: GigExperience?) {
                     Text(text = experience.date, color = Color.Black, fontSize = 13.sp)
                     Spacer(Modifier.width(5.dp))
                     Text(text = experience.jobPeriod, color = Color.Black, fontSize = 13.sp)
+                    Spacer(Modifier.weight(1f))
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Remove Gig Experience",
+                        tint = Color.Gray,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clickable { onRemoveClick() }
+                    )
                 }
             }
         }
@@ -833,7 +933,10 @@ private fun GigExperienceCard(experience: GigExperience?) {
 }
 
 @Composable
-private fun GigExperienceCard(rawExperience: String) {
+private fun GigExperienceCard(
+    rawExperience: String,
+    onRemoveClick: () -> Unit
+) {
     val lines = rawExperience.split("\n")
     val parsedExperience = if (lines.size >= 4) {
         GigExperience(
@@ -851,50 +954,55 @@ private fun GigExperienceCard(rawExperience: String) {
         )
     }
 
-    GigExperienceCard(experience = parsedExperience)
+    GigExperienceCard(
+        experience = parsedExperience,
+        onRemoveClick = onRemoveClick
+    )
 }
 
 @Composable
 private fun GigExperienceSection(
     experiences: List<String>,
-    onAddClick: () -> Unit
+    onAddClick: () -> Unit,
+    onRemoveClick: (String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (experiences.isEmpty()) {
-            GigExperienceCard(experience = null)
+            Text(
+                text = "No gig experiences available",
+                color = Color.Gray,
+                fontSize = 13.sp
+            )
         } else {
             experiences.forEach { experience ->
-                GigExperienceCard(rawExperience = experience)
+                GigExperienceCard(
+                    rawExperience = experience,
+                    onRemoveClick = { onRemoveClick(experience) }
+                )
             }
         }
 
-        Surface(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onAddClick() },
-            shape = RoundedCornerShape(10.dp),
-            color = Color.White,
-            border = BorderStroke(1.dp, Color.Black)
+                .clickable { onAddClick() }
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.padding(12.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add Gig Experience",
-                    tint = Color(0xFF262075),
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "Add Gig Experience",
-                    color = Color(0xFF262075),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Add Gig Experience",
+                tint = Color(0xFF262075),
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "Add Gig Experience",
+                color = Color(0xFF262075),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
