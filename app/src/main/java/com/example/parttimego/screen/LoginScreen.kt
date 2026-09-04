@@ -1,5 +1,6 @@
 package com.example.parttimego.screen
 
+import android.content.Context
 import android.widget.Toast
 import com.example.parttimego.R
 import androidx.compose.foundation.background
@@ -58,6 +59,36 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.text.input.VisualTransformation
+
+// Only the email is persisted as a draft — never the password. Storing a password
+// in SharedPreferences means storing it in plaintext on the device, which is a
+// security risk (readable if the device is rooted/compromised or lost). Losing a
+// half-typed password on accidental back-navigation is a much smaller cost than
+// that risk, so the password field intentionally resets every time.
+private object LoginDraftPrefs {
+    private const val PREFS_NAME = "login_draft"
+    private const val KEY_EMAIL = "email"
+
+    fun saveEmail(context: Context, email: String) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_EMAIL, email)
+            .apply()
+    }
+
+    fun loadEmail(context: Context): String {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_EMAIL, "") ?: ""
+    }
+
+    fun clear(context: Context) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .apply()
+    }
+}
+
 @Composable
 fun LoginScreen(
     authState: AuthState = AuthState.Idle,
@@ -66,17 +97,25 @@ fun LoginScreen(
     onJobSeekerClick: () -> Unit = {},
     onEmployerClick: () -> Unit = {}
 ) {
-    var email by remember { mutableStateOf("") }
+    val context = LocalContext.current
+
+    var email by remember { mutableStateOf(LoginDraftPrefs.loadEmail(context)) }
     var password by remember { mutableStateOf("") }
     var isLoginTab by remember { mutableStateOf(true) }
     var showRoleDialog by remember { mutableStateOf(false) }
     var passwordVisible by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
-    val context = LocalContext.current
+
+    // Save the email draft as it changes so it survives accidental back-navigation.
+    LaunchedEffect(email) {
+        LoginDraftPrefs.saveEmail(context, email)
+    }
 
     LaunchedEffect(authState) {
         if (authState is AuthState.Success) {
             Toast.makeText(context, authState.message, Toast.LENGTH_LONG).show()
+            // Clear the draft once login actually succeeds — no reason to keep it around.
+            LoginDraftPrefs.clear(context)
         }
     }
 
@@ -231,7 +270,7 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Password Field
+                    // Password Field — intentionally NOT persisted, see LoginDraftPrefs comment.
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             text = "Password",
