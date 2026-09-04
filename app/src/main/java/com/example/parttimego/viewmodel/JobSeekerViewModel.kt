@@ -69,6 +69,7 @@ data class JobSeekerUiState(
     val availableDays: List<String> = emptyList(),
     val skills: List<String> = emptyList(),
     val preferredLocations: List<String> = emptyList(),
+    val preferredStates: List<String> = emptyList(),
     val preferredCategories: List<String> = emptyList(),
     val workHistory: String = "None",
 
@@ -227,9 +228,17 @@ class JobSeekerViewModel(
             ?.filter { it.isNotBlank() }
             ?: emptyList()
 
-        val locations = mutableListOf<String>()
-        jobSeekerDetail?.jobSeekerPreferredLocation?.let { if (it.isNotBlank()) locations.add(it) }
-        jobSeekerDetail?.jobSeekerPreferredState?.let { if (it.isNotBlank()) locations.add(it) }
+        val locations = jobSeekerDetail?.jobSeekerPreferredLocation
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotBlank() }
+            ?: emptyList()
+
+        val states = jobSeekerDetail?.jobSeekerPreferredState
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotBlank() }
+            ?: emptyList()
 
         val parsedCategories = jobSeekerDetail?.jobSeekerPreferredJobCategories
             ?.split(",")
@@ -256,6 +265,7 @@ class JobSeekerViewModel(
                 availableDays = parsedDays,
                 skills = parsedSkills,
                 preferredLocations = locations,
+                preferredStates = states,
                 preferredCategories = parsedCategories,
                 workHistory = jobSeekerDetail?.jobSeekerWorkHistory ?: "None",
 
@@ -391,6 +401,96 @@ class JobSeekerViewModel(
                 _uiState.update { it.copy(jobSeeker = jobSeekerData) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = e.message ?: "Failed to load job seeker profile.") }
+            }
+        }
+    }
+
+    fun updateAvailability(isAvailable: Boolean) {
+        _uiState.update { it.copy(availability = isAvailable) }
+        viewModelScope.launch {
+            try {
+                val userId = supabaseClient.auth.currentUserOrNull()?.id ?: return@launch
+                supabaseClient.postgrest["worker"].update(
+                    mapOf("worker_availability" to isAvailable)
+                ) {
+                    filter { eq("user_id", userId) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Failed to update availability: ${e.message}") }
+            }
+        }
+    }
+
+    // Save CSV string or list updates for Skills
+    fun updateSkills(skillsCsv: String) {
+        val skillsList = skillsCsv.split(",").map { it.trim() }.filter { it.isNotBlank() }
+        _uiState.update { it.copy(skills = skillsList) }
+
+        viewModelScope.launch {
+            try {
+                val userId = supabaseClient.auth.currentUserOrNull()?.id ?: return@launch
+                supabaseClient.postgrest["worker"].update(
+                    mapOf("worker_skills" to skillsCsv)
+                ) {
+                    filter { eq("user_id", userId) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Failed to update skills: ${e.message}") }
+            }
+        }
+    }
+
+    // Save Preferred Locations
+    fun updatePreferredLocation(locationsCsv: String) {
+        val locationList = locationsCsv.split(",").map { it.trim() }.filter { it.isNotBlank() }
+        _uiState.update { it.copy(preferredLocations = locationList) }
+
+        viewModelScope.launch {
+            try {
+                val userId = supabaseClient.auth.currentUserOrNull()?.id ?: return@launch
+                supabaseClient.postgrest["worker"].update(
+                    mapOf("worker_preferredLocation" to locationsCsv)
+                ) {
+                    filter { eq("user_id", userId) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Failed to update locations: ${e.message}") }
+            }
+        }
+    }
+
+    fun updatePreferredState(statesCsv: String) {
+        val stateList = statesCsv.split(",").map { it.trim() }.filter { it.isNotBlank() }
+        _uiState.update { it.copy(preferredStates = stateList) }
+
+        viewModelScope.launch {
+            try {
+                val userId = supabaseClient.auth.currentUserOrNull()?.id ?: return@launch
+                supabaseClient.postgrest["worker"].update(
+                    mapOf("worker_preferredState" to statesCsv)
+                ) {
+                    filter { eq("user_id", userId) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Failed to update states: ${e.message}") }
+            }
+        }
+    }
+
+    // Save Work History
+    fun updateWorkHistory(workHistoryText: String) {
+        _uiState.update { it.copy(workHistory = workHistoryText) }
+
+        viewModelScope.launch {
+            try {
+                val userId = supabaseClient.auth.currentUserOrNull()?.id ?: return@launch
+                supabaseClient.postgrest["worker"].update(
+                    mapOf("worker_workHistory" to workHistoryText)
+                ) {
+                    filter { eq("user_id", userId) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Failed to update work history: ${e.message}") }
             }
         }
     }

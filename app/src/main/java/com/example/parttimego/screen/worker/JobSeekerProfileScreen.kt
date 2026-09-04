@@ -27,11 +27,16 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,10 +49,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.parttimego.data.location.LocationData
 import com.example.parttimego.data.model.JobSeeker
 import com.example.parttimego.nav.JobSeekerNavBar
 import com.example.parttimego.nav.JobSeekerNavItem
-import com.example.parttimego.ui.theme.PartTimeGOTheme
+import com.example.parttimego.viewmodel.JobSeekerUiState
+
+private data class GigExperience(
+    val jobTitle: String,
+    val companyName: String,
+    val date: String,
+    val jobPeriod: String
+)
 
 @Composable
 fun JobSeekerProfileScreen(
@@ -56,10 +69,63 @@ fun JobSeekerProfileScreen(
     onHomeClick: () -> Unit = {},
     onExploreClick: () -> Unit = {},
     onAppliedClick: () -> Unit = {},
-    onAvailabilityChange: (Boolean) -> Unit = {}
+    onAvailabilityChange: (Boolean) -> Unit = {},
+    onUpdateSkills: (String) -> Unit = {},
+    onUpdatePreferredLocation: (String) -> Unit = {},
+    onUpdatePreferredState: (String) -> Unit = {},
+    onUpdateWorkHistory: (String) -> Unit = {},
+    uiState: JobSeekerUiState
 ) {
     var isAvailable by remember(worker.jobSeekerAvailability) {
         mutableStateOf(worker.jobSeekerAvailability)
+    }
+
+    var skills by remember(worker.jobSeekerSkills) {
+        mutableStateOf(
+            worker.jobSeekerSkills
+                .split(",")
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+        )
+    }
+
+    var showAddSkillDialog by remember { mutableStateOf(false) }
+
+    var gigExperiences by remember(worker.jobSeekerWorkHistory) {
+        mutableStateOf(
+            if (worker.jobSeekerWorkHistory.isBlank()) {
+                emptyList()
+            } else {
+                worker.jobSeekerWorkHistory
+                    .split("\n\n")
+                    .filter { it.isNotBlank() }
+            }
+        )
+    }
+
+    var showAddExperienceDialog by remember { mutableStateOf(false) }
+
+    var selectedLocations by remember(worker.jobSeekerPreferredLocation) {
+        mutableStateOf(
+            worker.jobSeekerPreferredLocation
+                .split(",")
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .toSet()
+        )
+    }
+
+    // Preserve states explicitly so empty selections don't reset chosen states
+    var selectedStates by remember(worker.jobSeekerPreferredState, worker.jobSeekerPreferredLocation) {
+        val storedStates = worker.jobSeekerPreferredState
+            .split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .toSet()
+        val initialStates = LocationData.areasByState.filter { (_, areas) ->
+            areas.any { it in selectedLocations }
+        }.keys
+        mutableStateOf(storedStates.ifEmpty { initialStates })
     }
 
     Box(
@@ -67,39 +133,25 @@ fun JobSeekerProfileScreen(
             .fillMaxSize()
             .background(Color(0xFF262075))
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
 
-            // Profile Header
             JobSeekerProfileHeader(
                 worker = worker,
                 onEditProfileClick = onSettingClick
             )
 
-            // White Content Area
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
                 color = Color.White,
-                shape = RoundedCornerShape(
-                    topStart = 20.dp,
-                    topEnd = 20.dp
-                )
+                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
             ) {
-
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        start = 24.dp,
-                        end = 24.dp,
-                        top = 15.dp,
-                        bottom = 25.dp
-                    ),
+                    contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 15.dp, bottom = 25.dp),
                     verticalArrangement = Arrangement.spacedBy(13.dp)
                 ) {
-
                     // Availability
                     item {
                         AvailabilityCard(
@@ -112,75 +164,178 @@ fun JobSeekerProfileScreen(
                                 isAvailable = value
                                 onAvailabilityChange(value)
                             },
-                            onAvailableDaysChange = {
-                                // Later, this can be sent to WorkerViewModel
-                            }
+                            onAvailableDaysChange = {}
                         )
                     }
 
                     // Skills
-                    item {
-                        ProfileSectionTitle(
-                            title = "Skills"
-                        )
-                    }
+                    item { ProfileSectionTitle(title = "Skills") }
 
                     item {
-                        val skills = worker.jobSeekerSkills
-                            .split(",")
-                            .map { it.trim() }
-                            .filter { it.isNotEmpty() }
-
                         FlowChipRow(
                             chips = skills,
-                            showAddButton = true
+                            showAddButton = true,
+                            onAddClick = { showAddSkillDialog = true }
                         )
                     }
 
-                    // Preferred Locations
+                    // Preferred States
+                    item { ProfileSectionTitle(title = "Preferred States") }
+
                     item {
-                        ProfileSectionTitle(
-                            title = "Preferred Locations"
+                        FlowStateRow(
+                            states = LocationData.states,
+                            selectedStates = selectedStates,
+                            onStateToggle = { state ->
+                                val updatedStates = if (state in selectedStates) {
+                                    val remainingStates = selectedStates - state
+                                    val removedAreas = LocationData.getAreas(state)
+                                    selectedLocations = selectedLocations.filterNot { it in removedAreas }.toSet()
+                                    remainingStates
+                                } else {
+                                    selectedStates + state
+                                }
+                                selectedStates = updatedStates
+                                onUpdatePreferredState(updatedStates.joinToString(","))
+                                onUpdatePreferredLocation(selectedLocations.joinToString(","))
+                            }
                         )
                     }
 
-                    item {
-                        val locations = worker.jobSeekerPreferredLocation
-                            .split(",")
-                            .map { it.trim() }
-                            .filter { it.isNotEmpty() }
+                    // Preferred Locations Section
+                    item { ProfileSectionTitle(title = "Preferred Locations") }
 
-                        FlowChipRow(
-                            chips = locations,
-                            chipType = ChipType.GRAY,
-                            showAddButton = false
-                        )
+                    item {
+                        if (selectedStates.isEmpty()) {
+                            Text(
+                                text = "Select at least one state to view available locations",
+                                fontSize = 13.sp,
+                                color = Color.Gray
+                            )
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                selectedStates.forEach { state ->
+                                    val areas = LocationData.getAreas(state)
+
+                                    Text(
+                                        text = state.uppercase(),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.Gray
+                                    )
+
+                                    FlowAreaRow(
+                                        areas = areas,
+                                        selectedLocations = selectedLocations,
+                                        onAreaToggle = { area ->
+                                            val updatedLocations = if (area in selectedLocations) {
+                                                selectedLocations - area
+                                            } else {
+                                                selectedLocations + area
+                                            }
+                                            selectedLocations = updatedLocations
+                                            onUpdatePreferredLocation(updatedLocations.joinToString(","))
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     // Gig Experiences
-                    item {
-                        ProfileSectionTitle(
-                            title = "Gigs Experiences"
-                        )
-                    }
+                    item { ProfileSectionTitle(title = "Gigs Experiences") }
 
                     item {
-                        GigExperienceCard(
-                            workHistory = worker.jobSeekerWorkHistory
+                        GigExperienceSection(
+                            experiences = gigExperiences,
+                            onAddClick = { showAddExperienceDialog = true }
                         )
                     }
                 }
             }
+
             JobSeekerNavBar(
                 selectedItem = JobSeekerNavItem.PROFILE,
                 onHomeClick = onHomeClick,
                 onExploreClick = onExploreClick,
                 onAppliedClick = onAppliedClick,
-                onProfileClick = {
-                    // Already on Profile screen
+                onProfileClick = {}
+            )
+        }
+
+        if (showAddSkillDialog) {
+            AddSkillDialog(
+                onDismiss = { showAddSkillDialog = false },
+                onAdd = { newSkill ->
+                    if (newSkill.isNotBlank() && newSkill.trim() !in skills) {
+                        val updatedSkills = skills + newSkill.trim()
+                        skills = updatedSkills
+                        onUpdateSkills(updatedSkills.joinToString(","))
+                    }
+                    showAddSkillDialog = false
                 }
             )
         }
+
+        if (showAddExperienceDialog) {
+            AddGigExperienceDialog(
+                onDismiss = { showAddExperienceDialog = false },
+                onAdd = { experience ->
+                    val updatedExperiences = gigExperiences + experience
+                    gigExperiences = updatedExperiences
+                    onUpdateWorkHistory(updatedExperiences.joinToString("\n\n"))
+                    showAddExperienceDialog = false
+                }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FlowAreaRow(
+    areas: List<String>,
+    selectedLocations: Set<String>,
+    onAreaToggle: (String) -> Unit
+) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        areas.forEach { area ->
+            val selected = area in selectedLocations
+            AreaChip(
+                area = area,
+                selected = selected,
+                onClick = { onAreaToggle(area) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun AreaChip(
+    area: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.clickable { onClick() },
+        shape = RoundedCornerShape(8.dp),
+        color = if (selected) Color(0xFF262075) else Color.White,
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (selected) Color(0xFF262075) else Color(0xFFD0D0CC)
+        )
+    ) {
+        Text(
+            text = if (selected) "$area ✓" else area,
+            color = if (selected) Color.White else Color.Black,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+        )
     }
 }
 
@@ -192,19 +347,12 @@ private fun JobSeekerProfileHeader(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(
-                start = 24.dp,
-                end = 24.dp,
-                top = 14.dp,
-                bottom = 17.dp
-            )
+            .padding(start = 24.dp, end = 24.dp, top = 14.dp, bottom = 17.dp)
     ) {
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Text(
                 text = "Profile",
                 color = Color.White,
@@ -223,7 +371,6 @@ private fun JobSeekerProfileHeader(
                     modifier = Modifier.padding(10.dp, 5.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-
                     Icon(
                         imageVector = Icons.Default.Settings,
                         contentDescription = "Edit Profile",
@@ -236,11 +383,7 @@ private fun JobSeekerProfileHeader(
 
         Spacer(Modifier.height(10.dp))
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-
-            // Avatar
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
                     .size(84.dp)
@@ -248,28 +391,19 @@ private fun JobSeekerProfileHeader(
                     .background(Color.White),
                 contentAlignment = Alignment.Center
             ) {
-
                 Text(
-                    text = worker.jobSeekerName
-                        .firstOrNull()
-                        ?.uppercase()
-                        ?: "A",
+                    text = worker.jobSeekerName.firstOrNull()?.uppercase() ?: "A",
                     color = Color(0xFF262075),
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
                 )
 
-                // Online indicator
                 Box(
                     modifier = Modifier
                         .size(15.dp)
                         .clip(CircleShape)
                         .background(Color(0xFF118C20))
-                        .border(
-                            width = 5.dp,
-                            color = Color(0xFF262075),
-                            shape = CircleShape
-                        )
+                        .border(width = 5.dp, color = Color(0xFF262075), shape = CircleShape)
                         .align(Alignment.BottomEnd)
                 )
             }
@@ -286,18 +420,14 @@ private fun JobSeekerProfileHeader(
 
                 Spacer(Modifier.height(2.dp))
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.Email,
                         contentDescription = "email",
                         tint = Color.White,
                         modifier = Modifier.size(12.dp)
                     )
-
                     Spacer(Modifier.width(5.dp))
-
                     Text(
                         text = worker.jobSeekerEmail,
                         color = Color.White,
@@ -307,18 +437,14 @@ private fun JobSeekerProfileHeader(
 
                 Spacer(Modifier.height(2.dp))
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.Phone,
                         contentDescription = "phone",
                         tint = Color.White,
                         modifier = Modifier.size(12.dp)
                     )
-
                     Spacer(Modifier.width(5.dp))
-
                     Text(
                         text = worker.jobSeekerPhoneNo,
                         color = Color.White,
@@ -337,23 +463,10 @@ private fun AvailabilityCard(
     onAvailabilityChange: (Boolean) -> Unit,
     onAvailableDaysChange: (List<String>) -> Unit
 ) {
-    var selectedDays by remember {
-        mutableStateOf(availableDays)
-    }
+    var selectedDays by remember { mutableStateOf(availableDays) }
+    var showDaySelection by remember(available) { mutableStateOf(!available) }
 
-    var showDaySelection by remember(available) {
-        mutableStateOf(!available)
-    }
-
-    val days = listOf(
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-        "Sunday"
-    )
+    val days = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -361,25 +474,15 @@ private fun AvailabilityCard(
         border = BorderStroke(1.dp, Color.Black),
         color = Color.White
     ) {
-
-        Column(
-            modifier = Modifier.padding(12.dp, 10.dp)
-        ) {
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
+        Column(modifier = Modifier.padding(12.dp, 10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(7.dp))
-                        .background(
-                            Color(0xFF118C20).copy(alpha = 0.5f)
-                        ),
+                        .background(Color(0xFF118C20).copy(alpha = 0.5f)),
                     contentAlignment = Alignment.Center
                 ) {
-
                     Icon(
                         imageVector = Icons.Default.CalendarMonth,
                         contentDescription = null,
@@ -390,15 +493,9 @@ private fun AvailabilityCard(
 
                 Spacer(Modifier.width(10.dp))
 
-                Column(
-                    Modifier.weight(1f)
-                ) {
+                Column(Modifier.weight(1f)) {
                     Text(
-                        text = if (available) {
-                            "Available Everyday"
-                        } else {
-                            getAvailabilityText(selectedDays)
-                        },
+                        text = if (available) "Available Everyday" else getAvailabilityText(selectedDays),
                         color = Color.Black,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
@@ -408,15 +505,8 @@ private fun AvailabilityCard(
                 Switch(
                     checked = available,
                     onCheckedChange = { value ->
-
                         onAvailabilityChange(value)
-
-                        // If user turns ON, they are available every day
-                        if (value) {
-                            showDaySelection = false
-                        } else {
-                            showDaySelection = true
-                        }
+                        showDaySelection = !value
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
@@ -427,18 +517,13 @@ private fun AvailabilityCard(
                 )
             }
 
-            // Only show day selection when toggle is OFF
             if (!available && showDaySelection) {
-
                 Spacer(Modifier.height(10.dp))
-
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-
                     days.forEach { day ->
-
                         val shortDay = when (day) {
                             "Monday" -> "M"
                             "Tuesday" -> "T"
@@ -453,17 +538,12 @@ private fun AvailabilityCard(
                             day = shortDay,
                             selected = day in selectedDays,
                             onClick = {
-
-                                selectedDays =
-                                    if (day in selectedDays) {
-                                        selectedDays - day
-                                    } else {
-                                        selectedDays + day
-                                    }
-
-                                onAvailableDaysChange(
-                                    selectedDays
-                                )
+                                selectedDays = if (day in selectedDays) {
+                                    selectedDays - day
+                                } else {
+                                    selectedDays + day
+                                }
+                                onAvailableDaysChange(selectedDays)
                             }
                         )
                     }
@@ -473,11 +553,8 @@ private fun AvailabilityCard(
     }
 }
 
-
 @Composable
-private fun ProfileSectionTitle(
-    title: String
-) {
+private fun ProfileSectionTitle(title: String) {
     Text(
         text = title,
         color = Color.Black,
@@ -486,44 +563,35 @@ private fun ProfileSectionTitle(
     )
 }
 
-private enum class ChipType {
-    PURPLE,
-    GRAY
-}
+private enum class ChipType { PURPLE, GRAY }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FlowChipRow(
     chips: List<String>,
     chipType: ChipType = ChipType.PURPLE,
-    showAddButton: Boolean
+    showAddButton: Boolean,
+    onAddClick: () -> Unit = {}
 ) {
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-
         chips.forEach { chip ->
-            ProfileChip(
-                text = chip,
-                chipType = chipType
-            )
+            ProfileChip(text = chip, chipType = chipType)
         }
 
         if (showAddButton) {
             Surface(
-                modifier = Modifier.size(30.dp),
+                modifier = Modifier
+                    .size(30.dp)
+                    .clickable { onAddClick() },
                 shape = RoundedCornerShape(9.dp),
                 color = Color.White,
-                border = BorderStroke(
-                    width = 1.dp,
-                    color = Color(0xFFD0D0CC)
-                )
+                border = BorderStroke(1.dp, Color.Black)
             ) {
-                Box(
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = "Add Skills",
@@ -536,25 +604,63 @@ private fun FlowChipRow(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ProfileChip(
-    text: String,
-    chipType: ChipType
+private fun FlowStateRow(
+    states: List<String>,
+    selectedStates: Set<String>,
+    onStateToggle: (String) -> Unit
 ) {
-    val backgroundColor: Color
-    val textColor: Color
-
-    when (chipType) {
-
-        ChipType.PURPLE -> {
-            backgroundColor = Color(0xFF262075).copy(alpha = 0.5f)
-            textColor = Color(0xFF262075)
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        states.forEach { state ->
+            val selected = state in selectedStates
+            StateOption(
+                state = state,
+                selected = selected,
+                onClick = { onStateToggle(state) }
+            )
         }
+    }
+}
 
-        ChipType.GRAY -> {
-            backgroundColor = Color(0xFF8E8E80).copy(alpha = 0.5f)
-            textColor = Color(0xFF8E8E80)
-        }
+@Composable
+private fun StateOption(
+    state: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.clickable { onClick() },
+        shape = RoundedCornerShape(8.dp),
+        color = if (selected) Color(0xFF262075) else Color.White,
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (selected) Color(0xFF262075) else Color(0xFFD0D0CC)
+        )
+    ) {
+        Text(
+            text = if (selected) "$state ✓" else state,
+            color = if (selected) Color.White else Color.Black,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+        )
+    }
+}
+
+@Composable
+private fun ProfileChip(text: String, chipType: ChipType) {
+    val backgroundColor = when (chipType) {
+        ChipType.PURPLE -> Color(0xFF262075).copy(alpha = 0.5f)
+        ChipType.GRAY -> Color(0xFF8E8E80).copy(alpha = 0.5f)
+    }
+    val textColor = when (chipType) {
+        ChipType.PURPLE -> Color(0xFF262075)
+        ChipType.GRAY -> Color(0xFF8E8E80)
     }
 
     Surface(
@@ -572,90 +678,223 @@ private fun ProfileChip(
 }
 
 @Composable
-private fun AreaOption(
-    area: String,
-    selected: Boolean
+private fun AddSkillDialog(
+    onDismiss: () -> Unit,
+    onAdd: (String) -> Unit
 ) {
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        color = if (selected) {
-            Color(0xFF262075).copy(alpha = 0.12f)
-        } else {
-            Color.White
-        },
-        border = BorderStroke(
-            width = 1.dp,
-            color = if (selected) {
-                Color(0xFF262075)
-            } else {
-                Color(0xFFD0D0CC)
-            }
-        )
-    ) {
-
-        Row(
-            modifier = Modifier.padding(
-                horizontal = 12.dp,
-                vertical = 8.dp
-            ),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-
-            Text(
-                text = area,
-                modifier = Modifier.weight(1f),
-                fontSize = 14.sp,
-                color = Color.Black
+    var skill by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "Add Skill", fontWeight = FontWeight.Bold) },
+        text = {
+            OutlinedTextField(
+                value = skill,
+                onValueChange = { skill = it },
+                label = { Text("Skill") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
             )
-
-            if (selected) {
-                Text(
-                    text = "Selected",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF262075)
-                )
+        },
+        confirmButton = {
+            Button(
+                onClick = { onAdd(skill) },
+                enabled = skill.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF262075))
+            ) {
+                Text("Add")
             }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         }
-    }
+    )
 }
 
 @Composable
-private fun GigExperienceCard(
-    workHistory: String
+private fun AddGigExperienceDialog(
+    onDismiss: () -> Unit,
+    onAdd: (String) -> Unit
 ) {
+    var jobTitle by remember { mutableStateOf("") }
+    var companyName by remember { mutableStateOf("") }
+    var date by remember { mutableStateOf("") }
+    var jobPeriod by remember { mutableStateOf("") }
+
+    // Regex Validations
+    val dateRegex = Regex("^(0[1-9]|1[0-2])/([0-9]{4})$") // MM/YYYY format
+    val periodRegex = Regex("^[0-9]+\\s*(day|days|week|weeks|month|months|year|years|m|yr|yrs|d|w)?$", RegexOption.IGNORE_CASE)
+
+    val isDateValid = date.isBlank() || dateRegex.matches(date.trim())
+    val isPeriodValid = jobPeriod.isBlank() || periodRegex.matches(jobPeriod.trim())
+
+    val isFormValid = jobTitle.isNotBlank() &&
+            companyName.isNotBlank() &&
+            date.isNotBlank() && dateRegex.matches(date.trim()) &&
+            jobPeriod.isNotBlank() && periodRegex.matches(jobPeriod.trim())
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "Add Gig Experience", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = jobTitle,
+                    onValueChange = { jobTitle = it },
+                    label = { Text("Job Title") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = companyName,
+                    onValueChange = { companyName = it },
+                    label = { Text("Company Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = date,
+                    onValueChange = { date = it },
+                    label = { Text("MM/YYYY (e.g. 05/2024)") },
+                    isError = !isDateValid,
+                    supportingText = {
+                        if (!isDateValid) {
+                            Text("Use MM/YYYY format (e.g., 08/2023)", color = Color.Red, fontSize = 11.sp)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = jobPeriod,
+                    onValueChange = { jobPeriod = it },
+                    label = { Text("Job Period (e.g. 6 months, 2 weeks)") },
+                    isError = !isPeriodValid,
+                    supportingText = {
+                        if (!isPeriodValid) {
+                            Text("Enter duration (e.g., 3 months, 1 year)", color = Color.Red, fontSize = 11.sp)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val experience = "$jobTitle\n$companyName\n${date.trim()}\n${jobPeriod.trim()}"
+                    onAdd(experience)
+                },
+                enabled = isFormValid,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF262075))
+            ) {
+                Text("Add")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+private fun GigExperienceCard(experience: GigExperience?) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, Color.Black),
         color = Color.White
     ) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            if (experience == null) {
+                Text(
+                    text = "No gig experiences available",
+                    color = Color.Gray,
+                    fontSize = 13.sp
+                )
+            } else {
+                Text(
+                    text = experience.jobTitle,
+                    color = Color.Black,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(5.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = experience.companyName, color = Color.Black, fontSize = 13.sp)
+                    Spacer(Modifier.width(5.dp))
+                    Text(text = experience.date, color = Color.Black, fontSize = 13.sp)
+                    Spacer(Modifier.width(5.dp))
+                    Text(text = experience.jobPeriod, color = Color.Black, fontSize = 13.sp)
+                }
+            }
+        }
+    }
+}
 
-        Column(
-            modifier = Modifier.padding(10.dp, 8.dp)
+@Composable
+private fun GigExperienceCard(rawExperience: String) {
+    val lines = rawExperience.split("\n")
+    val parsedExperience = if (lines.size >= 4) {
+        GigExperience(
+            jobTitle = lines[0],
+            companyName = lines[1],
+            date = lines[2],
+            jobPeriod = lines[3]
+        )
+    } else {
+        GigExperience(
+            jobTitle = rawExperience,
+            companyName = "",
+            date = "",
+            jobPeriod = ""
+        )
+    }
+
+    GigExperienceCard(experience = parsedExperience)
+}
+
+@Composable
+private fun GigExperienceSection(
+    experiences: List<String>,
+    onAddClick: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (experiences.isEmpty()) {
+            GigExperienceCard(experience = null)
+        } else {
+            experiences.forEach { experience ->
+                GigExperienceCard(rawExperience = experience)
+            }
+        }
+
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onAddClick() },
+            shape = RoundedCornerShape(10.dp),
+            color = Color.White,
+            border = BorderStroke(1.dp, Color.Black)
         ) {
-
-            Text(
-                text = "Work History",
-                color = Color.Black,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(Modifier.height(3.dp))
-
-            Text(
-                text = if (workHistory.isBlank()) {
-                    "No work history available"
-                } else {
-                    workHistory
-                },
-                color = Color.Black,
-                fontSize = 14.sp,
-                lineHeight = 12.sp
-            )
+            Row(
+                modifier = Modifier.padding(12.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add Gig Experience",
+                    tint = Color(0xFF262075),
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Add Gig Experience",
+                    color = Color(0xFF262075),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
@@ -669,36 +908,15 @@ fun DayButton(
     Surface(
         modifier = Modifier
             .size(24.dp)
-            .clickable {
-                onClick()
-            },
+            .clickable { onClick() },
         shape = CircleShape,
-        color = if (selected) {
-            Color(0xFF262075)
-        } else {
-            Color.White
-        },
-        border = BorderStroke(
-            width = 1.dp,
-            color = if (selected) {
-                Color(0xFF262075)
-            } else {
-                Color(0xFFD0D0CC)
-            }
-        )
+        color = if (selected) Color(0xFF262075) else Color.White,
+        border = BorderStroke(1.dp, if (selected) Color(0xFF262075) else Color(0xFFD0D0CC))
     ) {
-
-        Box(
-            contentAlignment = Alignment.Center
-        ) {
-
+        Box(contentAlignment = Alignment.Center) {
             Text(
                 text = day,
-                color = if (selected) {
-                    Color.White
-                } else {
-                    Color.Black
-                },
+                color = if (selected) Color.White else Color.Black,
                 fontSize = 8.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -706,12 +924,7 @@ fun DayButton(
     }
 }
 
-@Composable
-private fun getAvailabilityText(
-    selectedDays: List<String>
-): String {
-    if(selectedDays.isEmpty()){
-        return "Select available days"
-    }
-    return "Every" + selectedDays.joinToString(", ")
+private fun getAvailabilityText(selectedDays: List<String>): String {
+    if (selectedDays.isEmpty()) return "Select available days"
+    return "Every " + selectedDays.joinToString(", ")
 }

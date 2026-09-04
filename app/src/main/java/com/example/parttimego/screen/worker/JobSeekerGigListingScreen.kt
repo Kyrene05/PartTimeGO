@@ -73,7 +73,7 @@ private enum class DateFilter(val label: String) {
 
 private val jobDateFormat =
     SimpleDateFormat(
-        "dd MMM yyyy",
+        "MMM dd, yyy",
         Locale.ENGLISH
     )
 
