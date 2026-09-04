@@ -378,7 +378,7 @@ fun EmployerProfileScreen(
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            title = { Text(text = "Logout", fontWeight = FontWeight.Bold) },
+            title = { Text(text = "Logout", fontWeight = FontWeight.Bold,color=DarkNavy) },
             text = { Text(text = "Are you sure you want to log out of your account?") },
             confirmButton = {
                 TextButton(
