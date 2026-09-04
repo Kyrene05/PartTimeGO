@@ -125,8 +125,18 @@ fun EditEmployerProfileScreen(
     val phoneDigits = uiState.phone.removePrefix("+60").removePrefix("60").filter { it.isDigit() }
     val isPhoneTooShort = phoneDigits.isNotEmpty() && phoneDigits.length < 8
 
+    val textFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = DarkNavy,
+        unfocusedBorderColor = Color(0xFFCBD5E1),
+        focusedLabelColor = DarkNavy,
+        unfocusedLabelColor = Color.Gray,
+        cursorColor = DarkNavy,
+        focusedTextColor = Color.Black,
+        unfocusedTextColor = Color.Black
+    )
+
     Scaffold(
-        containerColor = DarkNavy, // 确保底层包含状态栏在内全为深蓝色
+        containerColor = DarkNavy,
         topBar = {
             TopAppBar(
                 title = {
@@ -147,7 +157,7 @@ fun EditEmployerProfileScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent // 设为透明，完美融入底层背景
+                    containerColor = Color.Transparent
                 )
             )
         }
@@ -252,10 +262,11 @@ fun EditEmployerProfileScreen(
                         label = { Text("Full Name") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        colors = textFieldColors
                     )
 
-                    // Company Name 输入框（带必填提示）
+                    // Company Name 輸入框
                     Column {
                         OutlinedTextField(
                             value = uiState.companyName,
@@ -263,11 +274,12 @@ fun EditEmployerProfileScreen(
                             label = { Text("Company Name *") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            colors = textFieldColors
                         )
                     }
 
-                    // Phone Number 输入框（带必填及位数提示）
+                    // Phone Number 輸入框
                     Column {
                         OutlinedTextField(
                             value = phoneDigits,
@@ -289,7 +301,8 @@ fun EditEmployerProfileScreen(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            colors = textFieldColors
                         )
                         if (isPhoneTooShort) {
                             Text(
@@ -341,7 +354,8 @@ fun EditEmployerProfileScreen(
                                 .fillMaxWidth()
                                 .height(130.dp),
                             shape = RoundedCornerShape(12.dp),
-                            maxLines = 5
+                            maxLines = 5,
+                            colors = textFieldColors
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
